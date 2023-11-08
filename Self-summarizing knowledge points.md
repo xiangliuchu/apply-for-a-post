@@ -1,7 +1,7 @@
 # 自总结知识点
 ## springMVC中不同注解的作用   详细见：[springMVC](D:\Java\java50th\java50-course-materials\03-JavaEE&Spring框架\02-笔记\Day22-26-SpringMVC.md)
 
-### 1 @RequestMapping : 用于请求路径和处理方法的注解 ， 主要实现一些限定
+### @RequestMapping : 用于请求路径和处理方法的注解 ， 主要实现一些限定
 
 ```java
 1.★★★value: url路径映射，窄化请求； 如： @RequestMapping(value={"hello"})//映射URL → localhost:8080/hello
@@ -12,7 +12,7 @@
 6.produces: 限定的是Accept这个请求头的值 → 这个请求的含义 → 客户端希望接收到的服务端响应的正文类型   比如一个jpg文件：image/jpeg  比如文本：text/html  比如json：application/json 
 ```
 
-### 2  放在方法的形参中的一些注解：
+### 放在方法的形参中的一些注解：
 
 - 请求URL的信息 → @PathVariable     获得请求url中占位符所在的值
 
@@ -38,7 +38,7 @@
 
 - Session信息 → @SessionAttribute
 
-### 3. @ResponseBody 如果写在类上，意味着当前类下所有的方法响应的都是字符串或Json字符串 （附 ：@RestController）
+### @ResponseBody 如果写在类上，意味着当前类下所有的方法响应的都是字符串或Json字符串 （附 ：@RestController）
 
 引申注解：<span style='color:yellow;background:red;font-size:文字大小;font-family:字体;'>**@RestController **</span>**= @Controller + @ResponseBody**
 
@@ -50,9 +50,9 @@
 4. **支持常见的HTTP方法**：@RestController 注解支持常见的HTTP方法，如GET、POST、PUT、DELETE等，通过不同的请求映射路径和方法来处理不同的请求。
 5. **无需额外的视图解析器**：由于 @RestController 注解主要用于返回数据而不是视图，因此不需要额外配置视图解析器。
 
-### 4. @Autowired用于组件的注入，如方法注入、成员变量等     详细见：[SpringIOC](D:\Java\java50th\java50-course-materials\03-JavaEE&Spring框架\02-笔记\Day18-20-Spring-IOC.md)
+###  @Autowired用于组件的注入，如方法注入、成员变量等     详细见：[SpringIOC](D:\Java\java50th\java50-course-materials\03-JavaEE&Spring框架\02-笔记\Day18-20-Spring-IOC.md)
 
-### 5. @Qualifier
+###  @Qualifier
 
 **`@Qualifier` 是一个用于解决依赖注入中多个候选对象的歧义性的Spring框架注解。它可以与 `@Autowired` 注解一起使用，通过指定限定符来精确选择要注入的bean对象。**
 
@@ -85,6 +85,46 @@ public class UserService {
 在上述示例中，`UserService` 类使用 `@Autowired` 注解将 `UserDao` 对象注入到 `userDao` 字段中。通过在 `@Qualifier` 注解中指定限定符 `"userDaoImpl"`，可以确保注入的是具有相应限定符的 `UserDao` bean 对象。
 
 总而言之，`@Qualifier` 注解是Spring框架中用于解决依赖注入中多个候选对象歧义性的关键注解之一。它允许精确指定要注入的bean对象，以确保正确的依赖关系被建立。
+
+## mybatis-plus中的分页插件  注意看getSize(), getPages()是表示的什么
+
+MyBatis Plus自带分页插件，只要简单的配置即可实现分页功能
+
+添加配置类
+
+```java
+@Configuration
+//@MapperScan("com.cskaoyan.mybatisplus.mapper") //可以将主类中的注解移到此处
+public class MybatisPlusConfig {
+    @Bean
+    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        return interceptor;
+	}
+}
+```
+
+```java
+@Test
+public void testPage(){
+    //设置分页参数
+    // 注意页数从1开始
+    Page<User> page = new Page<>(1, 2);
+    userMapper.selectPage(page, null);
+    //获取分页中的每一条记录
+    List<User> list = page.getRecords();
+    list.forEach(System.out::println);
+    System.out.println("当前页：" + page.getCurrent());
+    System.out.println("每页显示的条数：" + page.getSize());
+    System.out.println("总记录数：" + page.getTotal());
+    System.out.println("总页数：" + page.getPages());
+    System.out.println("是否有上一页：" + page.hasPrevious());
+    System.out.println("是否有下一页：" + page.hasNext());
+}
+```
+
+
 
 
 
