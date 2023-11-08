@@ -1,4 +1,4 @@
 # 总结知识点
 ## 1.springMVC中不同注解的作用
-### 1
+### 1 @RequestMapping :
 
