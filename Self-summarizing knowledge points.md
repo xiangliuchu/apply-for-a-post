@@ -158,6 +158,251 @@ public void testPage(){
 - 这样一来，**客户端就不用在获取HTML页面后，再次通过异步请求来获取这些动态数据，而是直接使用包含所需数据的HTML，对于前端，少了请求数据的延迟，对于后端减少了处理请求的数量**
 - 对于另外的一些需要根据用户的行为，来实时获取的动态数据，前端仍然可以使用ajax向后端发起动态请求实时获取
 
+## 分布式锁        [商品详情优化](D:\Java\java50th\java50-course-materials\04-微服务\01-课件\13_商品详情页2\商品详情优化.md)
+
+### 基于setnx来实现    保证服务实例进来后用的都是同一把锁
+
+```
+# set not exists,设置一个键值对，不会覆盖原来的值
+# 当key不存在的时候，再去设值，不会覆盖原来的值
+setnx key value
+```
+
+要实现一把锁，最主要是要模拟一把锁加锁和释放锁的状态。我们可以在Redis中定义一个string类型的值，把这个值的key当做是锁的名字，于是我们可以用是否有该key对应的值，当做是锁是否上锁的状态：
+
+- key对应的value值存在，说明锁被上锁了，不能重复加锁
+- key对应的value值不存在，说明锁还没有被上锁，可以加锁(就是在redis中添加该key对应的value值)
+
+![](D:/Java/java50th/java50-course-materials/04-微服务/01-课件/13_商品详情页2/商品详情优化.assets/商品详情页-setnx 加锁.png)
+
+所以这样的加锁操作，刚刚好可以用SETNX来完成，所以可以改造我们的代码如下：
+
+```java
+@Service
+public class TestServiceImpl implements TestService {
+
+    @Autowired
+    RedissonClient redissonClient;
+
+    @Override
+    public void incrWithLock() {
+        // 在操作Redis中的数据之前先加锁, lock:number 对应的值可以是任意的
+        RBucket<String> lockBucket = redissonClient.getBucket("lock:number");
+        // trySet方法等价于SETNX
+        boolean exists = lockBucket.trySet("lockObj");
+        if (!exists) {
+            // 如果锁已存在，即已经加锁, 则稍后重试
+            try {
+                Thread.sleep(100);
+                incrWithLock();
+                return;
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+        // 如果加锁成功，则自增key number对应的值
+        try {
+            RBucket<Integer> bucket = redissonClient.getBucket("number");
+            // 获取key为number的value值
+            int number = bucket.get();
+            // 自增1
+            number++;
+            // 在放回redis
+            bucket.set(number);
+        } finally {
+            // 访问完数据之后，释放锁，即删除lock:number这个key
+            lockBucket.delete();
+        }
+
+    }
+}
+
+```
+
+![](D:/Java/java50th/java50-course-materials/04-微服务/01-课件/13_商品详情页2/商品详情优化.assets/商品详情页-使用setnx结果.png)
+
+看起来，好像也没啥问题，**但是这种实现方式有一个潜在的问题，就是如果在某一个商品服务实例中，加锁成功之后，因为某些原因，在还未释放锁之前，该实例挂了(java进程挂了)，那就意味着这把锁永远不会被释放，那么其他服务实例就再也访问不到这把锁了**。
+
+### 增加过期时间     防止进程挂掉，永远不释放锁，这样其他实例，依然可以加锁成功
+
+针对上述的可能存在的问题，我们可以增加一个解决方案就是，在利用SETNX加锁成功之后，给锁(给key)设置过期时间，这样一来，如果因为意外情况没有释放锁，到了锁的过期时间，其他服务实例，依然可以加锁成功。
+
+![](D:/Java/java50th/java50-course-materials/04-微服务/01-课件/13_商品详情页2/商品详情优化.assets/setnx 增加过期时间.png)
+
+所以，结合过期时间，我们改造代码如下：
+
+```java
+@Service
+public class TestServiceImpl implements TestService {
+
+    @Autowired
+    RedissonClient redissonClient;
+
+    @Override
+    public void incrWithLock() {
+        // 在操作Redis中的数据之前先加锁, lock:number 对应的值可以是任意的
+        RBucket<String> lockBucket = redissonClient.getBucket("lock:number");
+        // trySet方法等价于SETNX
+        boolean exists = lockBucket.trySet("lockObj", 3, TimeUnit.SECONDS);
+        if (!exists) {
+            // 如果锁已存在，即已经加锁, 则稍后重试
+            try {
+                Thread.sleep(100);
+                incrWithLock();
+                return;
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+        // 如果加锁成功
+        try {
+            RBucket<Integer> bucket = redissonClient.getBucket("number");
+            // 获取key为number的value值
+            int number = bucket.get();
+            // 自增1
+            number++;
+            // 在放回redis
+            bucket.set(number);
+        } finally {
+            // 访问完数据之后，释放锁，即删除lock:number这个key
+            lockBucket.delete();
+        }
+
+    }
+}
+```
+
+以上代码如果测试是没问题的。但是这种实现方式，仍然有**潜在**的**问题**：
+
+- **假设商品服务实例1先加锁成功，开始执行了，但是它执行4秒中，才会释放锁**
+- **但是过了3秒后，锁过期了，商品服务实例2加锁成功**
+- **又过了1s商品服务实例1执行完，释放锁，但是服务实例2还在执行，此时相当于没加锁**
+
+### 增加UUID防止误删   实例1还未执行完时，锁已过期，实例2加锁后，被实例1误删掉锁
+
+所以，为了防止锁被误删，所以在加锁的时候，我们给锁key对应的value，设置为一个uuid，并保存这个uuid。在释放锁的时候，如果获取到了锁，还要看看锁的value
+
+- 如果锁key对应的value和释放锁的线程锁持有的uuid是不是同一个，说明是加锁线程在释放锁没有问题
+- 但是如果不一致，说明加锁线程和释放锁的线程不是同一个，不能释放锁
+
+![](D:/Java/java50th/java50-course-materials/04-微服务/01-课件/13_商品详情页2/商品详情优化.assets/商品详情页 增加uuid.png)
+
+这样一来，就可以解决，锁的误删问题，代码如下
+
+```java
+@Service
+public class TestServiceImpl implements TestService {
+
+    @Autowired
+    RedissonClient redissonClient;
+
+    @Override
+    public void incrWithLock() {
+        // 在操作Redis中的数据之前先加锁, lock:number 对应的值可以是任意的
+        RBucket<String> lockBucket = redissonClient.getBucket("lock:number");
+        String uuid = UUID.randomUUID().toString();
+        // trySet方法等价于SETNX，设置锁key对应的值
+        boolean exists = lockBucket.trySet(uuid, 3, TimeUnit.SECONDS);
+        if (!exists) {
+            // 如果锁已存在，即已经加锁, 则稍后重试
+            try {
+                Thread.sleep(100);
+                incrWithLock();
+                return;
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+        // 如果加锁成功
+        try {
+            RBucket<Integer> bucket = redissonClient.getBucket("number");
+            // 获取key为number的value值
+            int number = bucket.get();
+            // 自增1
+            number++;
+            // 在放回redis
+            bucket.set(number);
+        } finally {
+            if (uuid.equals(lockBucket.get())) {
+                // 说明是加锁线程在释放锁，可以正确释放
+                lockBucket.delete();
+            }
+
+        }
+
+    }
+}
+
+```
+
+但是增加uuid防止误删就完美了吗？当然不是，因为还是有可能会有问题：
+
+- **假设商品服务实例1，先加锁，访问完Redis数据后，刚刚执行完uuid.equals(lockBucket.get())发现结果为true，准备释放锁了**
+- **但是在释放锁之前，刚好锁也过期了，商品服务实例2继续加锁成功**
+- **然后，商品服务实例1删除锁，测试商品服务实例2在访问Redis数据时相当于没有加锁**
+
+**究其原因，就是因为判断和释放锁不是原子操作。**
+
+### Redisson实现的分布式锁    以上还有问题，判断和释放锁不是原子操作，还可能误删
+
+所以，我们还需要让判断和释放锁成为原子操作，怎么样让它们成为原子操作呢？用Lua脚本来实现它们即可。因为Redis的工作线程是单线程，且Lua脚本可以直接在Redis中运行，所以一段Lua脚本中运行的必然是一个原子操作。而Redisson底层，就是利用Lua脚本来加锁和释放锁的。
+
+如果使用Redisson，则代码如下：
+
+```java
+@Service
+public class TestServiceImpl implements TestService {
+
+    @Autowired
+    RedissonClient redissonClient;
+
+    @Override
+    public void incrWithLock() {
+        // 获取锁
+        RLock redisLock = redissonClient.getLock("lock:number");
+        try {
+            // 加锁，失败会在这里阻塞
+            redisLock.lock();
+            // 加锁成功，代码执行到这里
+            RBucket<Integer> bucket = redissonClient.getBucket("number");
+            // 获取key为number的value值
+            int number = bucket.get();
+            // 自增1
+            number++;
+            // 在放回redis
+            bucket.set(number);
+        } finally {
+            // 释放锁
+            redisLock.unlock();
+        }
+
+    }
+}
+
+```
+
+为了确保**分布式锁可用**，我们要确保锁的实现同时满足以下**四个条件**：
+
+**\- 互斥性。在任意时刻，只有一个客户端能持有锁。**
+
+**\- 不会发生死锁。即使有一个客户端在持有锁的期间崩溃而没有主动解锁，也能保证后续其他客户端能加锁。**
+
+**\- 解铃还须系铃人。加锁和解锁必须是同一个客户端，客户端自己不能把别人加的锁给解了。**
+
+**\- 加锁和解锁必须具有原子性**
+
+**而这四个条件，Redisson实现的分布式锁都可以满足，同时Redisson实现的分布式锁，还是可重入的。**
+
+
+
+
+
 
 
 
