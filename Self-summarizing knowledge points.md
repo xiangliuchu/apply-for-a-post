@@ -466,7 +466,7 @@ public class TestServiceImpl implements TestService {
 
 
 
-## AOP+自定义注解+分布式锁   
+## AOP+自定义注解+分布式锁   商品详情优化
 
 通过自定义注解+aop将与业务逻辑无关的功能模块化，提高代码的可维护性和可重用性。
 
