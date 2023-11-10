@@ -464,9 +464,286 @@ public class TestServiceImpl implements TestService {
 
 自定义注解的属性可以用于在注解中存储和**传递信息**，以便在需要时能够根据这些信息进行相应的处理。通过注解的属性，你可以在注解中提供一些可配置的选项，使得注解能够适应不同的使用场景。
 
+## AspectJ
+
+​	切面组件
+
+- 增加AspectJ的注解开关 → 配置类上增加一个注解**@EnableAspectJAutoProxy**
+- 把组件标记为切面组件 → **@Aspect**
+
+### 切入点表达式
+
+引入Aspectjweaver依赖
+
+```xml
+<dependency>
+    <groupId>org.aspectj</groupId>
+    <artifactId>aspectjweaver</artifactId>
+    <version>1.9.6</version>
+</dependency>
+```
+
+在切面组件中使用**@Pointcut**
+
+- value属性：切入点表达式
+- 方法名：作为切入点id
+
+```java
+ @Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD})
+public @interface Pointcut {
+    String value() default "";
+
+    String argNames() default "";
+}
+```
+
+###  execution
+
+- 能否省略
+
+- 能否通配
+
+- 特殊用法
+
+修饰符：可以省略，省略代表任意修饰符
+
+返回值：不能省略，POJO类要写全类名；可以是用*作为通配符
+
+包名、类名、方法名：使用..部分省略，头和尾不能省略，中间的任意一部分都可以省略；可以使用*作为通配符
+
+形参：可以使用..或* 来进行通配，<font color=red>..代表任意数量任意类型的参数，*代表任意类型的参数；POJO类要写全类名</font>
+
+```java
+<!--execution 👉 aop:pointcut 👉 指定的是容器中的组件中的方法-->
+
+<!--语法：execution(访问修饰符 返回值 包名.类名.方法名(参数列表))
+
+        1、能否省略不写
+        2、能否通配
+        3、是否有特殊用法
+
+        访问修饰符：可以省略、省略不写代表任意修饰符
+        返回值：不可以省略、可以使用*来通配、JavaBean要写全类名（基本类型、包装类以及String可以直接写）
+        包名、类名、方法名：可以部分省略，头和尾不能省略，中间的任意一部分都可以省略 👉 ..来进行省略
+                         *来通配 com.*、com.cskao*，头和尾也可以使用*作为通配符                                          *.cskaoyan.service.UserService.say*
+        参数列表：可以省略 👉 代表的是无参的方法
+                如果想要写多个参数，写参数的全类名 👉 第一参数是String，第二个参数是int 👉 (String,int)
+                可以通配：* 👉 代表的单个任意参数
+                        .. 👉 任意参数 👉 任意数量的任意类型的参数
+                JavaBean要写全类名（基本类型、包装类以及String可以直接写）
+-->
+/**
+     * execution(修饰符 返回值 包名、类名、方法名(形参))
+     * 可以增强多个方法
+     *     越具体，匹配范围越小；越宽泛，匹配范围越大。
+     *     通配符
+     *     - 修饰符： 可以省略不写，如果省略不写代表任意修饰符
+     *     - 返回值： 不能省略，可以使用通配符* 。*代表任意值
+     *               如果是引用类型，要写全限定类名;全限定类名中也可以出现通配符*
+     *     - 包名、类名、方法名： 可以使用*来通配，也可以使用..来通配
+     *                         头和尾的位置不能使用..  但是可以使用*
+     *     - 形参： 省略不写代表无参方法
+     *             可以使用*来通配 → 代表单个任意类型的参数
+     *             也可以使用..来通配 → 代表任意参数 → 数量任意，类型也任意
+     *             如果是引用类型，要写全限定类名;全限定类名中也可以出现通配符*
+     */
+    //@Pointcut("execution(public void com.cskaoyan.demo3.service.UserServiceImpl.sayHello(java.lang.String))")
+    //@Pointcut("execution(public * com.cskaoyan.demo3.service.UserServiceImpl.sayHello(java.lang.String))")
+    //@Pointcut("execution(public com.cskaoyan.demo3.bean.User com.cskaoyan.demo3.service.UserServiceImpl.query(Integer))")
+    //@Pointcut("execution(public com.cskaoyan.demo3.bean.* com.cskaoyan.demo3.service.UserServiceImpl.query(Integer))")
+    //@Pointcut("execution(public com.cskaoyan.demo3.bean.* com.cskaoyan.*.ser*.*ServiceImpl.query(Integer))")
+    //@Pointcut("execution(public com.cskaoyan.demo3.bean.* com..*ServiceImpl.query(Integer))")
+    // 增强service层 以say作为开头的方法(暂时先没管参数)
+    //@Pointcut("execution(* com..service.*ServiceImpl.say*(String))")
+    @Pointcut("execution(* com..service.*ServiceImpl.*(..))")
+    public void pointcut1(){}
+```
+
+```java
+@Pointcut("execution(public void com.cskaoyan.service.UserServiceImpl.sayHello(String))")
+public void mypointcut1(){}
+```
 
 
-## AOP+自定义注解+分布式锁   商品详情优化
+
+### @annotation
+
+写上自定义注解的全类名
+
+```java
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface CountTime {
+}
+```
+
+```java
+@Pointcut("@annotation(com.cskaoyan.CountTime)")
+public void mypointcut2(){}
+```
+
+### @target
+
+写上自定义注解的全类名
+
+```java
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.Type)
+public @interface CountTimeAllMethod {
+}
+```
+
+```java
+@Pointcut("@target(com.cskaoyan.CountTimeAllMethod)")
+public void mypointcut3(){}
+```
+
+### Aspect切面
+
+在切面类中配置切面组件和通知方法
+
+AspectJ的注解实现，首先要标记前面开关
+
+然后在切面类中使用AspectJ相关的注解，表达切面、切入点、通知
+
+```java
+/**
+ * 增加对应通知的方法 ： 将这样的一些方法配置为对应的通知方法
+ * 方法 👉 通知
+ *  before
+ *  after
+ *  around
+ *  afterReturning
+ *  afterThrowing
+ */
+@Component
+@Aspect
+public class CustomAspect {
+  /**
+     * pointcut方法
+     * 返回值：void
+     * 方法名：任意写 👉 用于作为pointcut组件的id
+     * 形参：不用写
+     * 方法体：不用写
+     * @Pointcut的value属性写切入点表达式
+     */
+  @Pointcut("execution(* com.cskaoyan.service..*(..))")
+  public void mypointcut1(){}
+  @Pointcut("@annotation(com.cskaoyan.CountTime)")
+  public void mypointcut2(){}
+  @Pointcut("@annotation(com.cskaoyan.CountTimeAllMethod)")
+  public void mypointcut3(){}
+  /**
+     * 通知注解@Before、@After、@Around、@AfterReturning、@AfterThrowing
+     * value属性：
+     *      1、对应的切入点表达式
+     *      2、引用的切入点表达式的方法名
+     */
+
+  /**
+     * before通知
+     * 返回值：void
+     * 方法名：任意去写
+     * 形参：joinPoint连接点 (可写可不写)
+     */
+  //@Before("execution(* com.cskaoyan.service..*(..))")
+  @Before("mypointcut()")
+  public void before(JoinPoint joinPoint){
+    System.out.println("before");
+  }
+  /**
+     * after通知
+     * 返回值：void
+     * 方法名：任意去写
+     * 形参：joinPoint连接点 (可写可不写)
+     */
+  @After("mypointcut()")
+  public void after(){
+    System.out.println("after");
+  }
+  /**
+     * around通知
+     * 返回值：Object
+     * 方法名：任意去写
+     * 形参：ProceedingJoinPoint连接点 (必须写) 👉 提供了proceed方法，执行的是委托类的代码
+     */
+  @Around("mypointcut()")
+  public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
+    System.out.println("around的before");
+
+    Object proceed = proceed = joinPoint.proceed();//该方法执行的是委托类的方法
+
+    System.out.println("around的after");
+    return proceed;
+  }
+  /*public Object around(ProceedingJoinPoint joinPoint){
+        System.out.println("around的before");
+        Object proceed = null;//该方法执行的是委托类的方法
+        try {
+            proceed = joinPoint.proceed();
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+        }
+        System.out.println("around的after");
+        return proceed;
+    }*/
+  /**
+     * afterReturning通知
+     * 返回值：void
+     * 方法名：任意去写
+     * 形参：Object(委托类方法的执行结果)
+     */
+  @AfterReturning(value = "mypointcut()",returning = "result")
+  public void afterReturning(Object result){
+    System.out.println("afterReturning");
+  }
+  /**
+     * afterThrowing通知
+     * 返回值：void
+     * 方法名：任意去写
+     * 形参：Exception/Throwable(委托类方法执行过程中抛出异常)
+     */
+  @AfterThrowing(value = "mypointcut()",throwing = "exception")
+  public void afterThrowing(Exception exception){//Throwable
+    System.out.println("afterThrowing");
+    System.out.println(exception.getMessage());
+  }
+
+}
+```
+
+### JoinPoint连接点
+
+获取增强过程中的一些值
+
+- Signature 方法
+- Arguments 参数
+- This 代理对象
+- Target 委托类对象
+
+在通知方法的形参中，传入JoinPoint形参，通过JoinPoint获得对应的一些参数
+
+```java
+@Before("mypointcut()")
+public void before(JoinPoint joinPoint){
+    //Signature 方法的描述
+    //This 代理对象
+    //Target 委托类对象
+    //Arguments 参数
+    Signature signature = joinPoint.getSignature();
+    Object proxy = joinPoint.getThis();
+    Object target = joinPoint.getTarget();
+    Object[] args = joinPoint.getArgs();
+
+    System.out.println("signature:" + signature.getName());
+    System.out.println(proxy.getClass().getName());
+    System.out.println(target.getClass().getName());
+    System.out.println(Arrays.asList(args));
+}
+```
+
+## AOP+自定义注解+分布式锁   [商品详情优化](D:\Java\java50th\java50-course-materials\04-微服务\01-课件\13_商品详情页2\商品详情优化.md)
 
 通过自定义注解+aop将与业务逻辑无关的功能模块化，提高代码的可维护性和可重用性。
 
