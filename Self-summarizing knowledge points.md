@@ -401,6 +401,75 @@ public class TestServiceImpl implements TestService {
 
 
 
+## 自定义注解
+
+### 语法：
+
+```
+权限修饰符 @interface 注解名字{
+    // 注解体定义
+    属性类型 属性名();
+    属性类型 属性名();
+    属性类型 属性名();
+    ......
+}
+
+例如：
+
+// 定义注解
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+@interface Login{
+    // 属性
+    String username() default "admin";
+
+    String password() default "123456";
+}
+```
+
+### 元注解
+
+**@Retention元注解，来定义我们自己定义的注解的保留级别.**
+
+- RetentionPolicy.RUNTIME
+- RetentionPolicy.CLASS  默认
+- RetentionPolicy.SOURCE
+
+**@Target元注解，注解可以作用的目标**
+
+对于注解而言，可以作用的目标：
+
+1. 整个类    ElementType.TYPE
+2. 成员变量   ElementType.FIELD
+3. 构造方法   ElementType.CONSTRUCTOR
+4. 成员方法   ElementType.METHOD
+
+### 注意事项
+
+**使用的时候注解的每个属性都要赋值**
+
+```java
+@注解名(属性1=属性值,属性2=属性值)
+```
+
+**注意事项:**
+
+- 每个属性都要赋值
+- 可以不赋值,但是要有默认值, default
+- 数组形式赋值 {}
+- 如果只有1个属性, 名字叫value, 可以简化赋值
+- 如果属性类型是引用类型, 不能是null
+
+### 注解的属性值
+
+自定义注解的属性可以用于在注解中存储和**传递信息**，以便在需要时能够根据这些信息进行相应的处理。通过注解的属性，你可以在注解中提供一些可配置的选项，使得注解能够适应不同的使用场景。
+
+
+
+## AOP+自定义注解+分布式锁   
+
+通过自定义注解+aop将与业务逻辑无关的功能模块化，提高代码的可维护性和可重用性。
+
 
 
 
