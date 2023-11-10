@@ -565,9 +565,22 @@ public @interface Pointcut {
 public void mypointcut1(){}
 ```
 
+**execution和@annotation有什么区别：**
 
+`execution`和`@annotation`是用于定义切点表达式（pointcut expression）的两种不同方式。
 
-### @annotation
+- `execution`是一种切点表达式，它基于方法的签名和访问修饰符来匹配方法。它可以定义在切面中使用的切点，以便选择特定的方法进行增强或拦截。例如，`execution(public void com.example.MyClass.myMethod())`表示选择`MyClass`类中的`myMethod`方法，而`public`是访问修饰符。
+  
+- `@annotation`是一种切点指示器（pointcut designator），它基于注解的存在来匹配方法。它可以用于切面中的切点表达式，以便选择被特定注解标记的方法进行增强或拦截。例如，`@annotation(com.example.MyAnnotation)`表示选择被`MyAnnotation`注解标记的方法。
+
+区别在于：
+- `execution`是基于方法的签名和访问修饰符进行匹配，而`@annotation`是基于注解的存在进行匹配。
+- `execution`可以匹配方法的任何特征（如方法名、参数类型等），而`@annotation`只匹配被指定注解标记的方法。
+- `execution`可以选择多个方法进行匹配，而`@annotation`只能选择被特定注解标记的方法。
+
+在使用切面编程时，你可以根据需要选择使用`execution`还是`@annotation`，**具体取决于你想要匹配哪些方法和条件**。
+
+### @annotation   (只是一些不同的匹配方式)
 
 写上自定义注解的全类名
 
@@ -746,6 +759,183 @@ public void before(JoinPoint joinPoint){
 ## AOP+自定义注解+分布式锁   [商品详情优化](D:\Java\java50th\java50-course-materials\04-微服务\01-课件\13_商品详情页2\商品详情优化.md)
 
 通过自定义注解+aop将与业务逻辑无关的功能模块化，提高代码的可维护性和可重用性。
+
+整个流程的逻辑：在需要被增强的方法（**比如getSkuInfo()方法等**）上面添加自定义注解如@RedisCache， 然后再单独写一个切面，通知方法使用环绕通知 @Around("@annotation(com.cskaoyan.mall.common.cache.RedisCache)")，其中@annotation匹配自定义注解@RedisCache；那么在所有有@RedisCache注解的方法就会执行增强方法：
+
+**1. 先访问Redis，有数据直接放回，没有数据则加锁；**  **（around通知）**
+
+**2. 然后执行自己本身的方法，从数据库中拿数据；**  **（自身方法）**
+
+**3.因为是around通知， 最后再执行增强逻辑， 将拿到的数据，放入Redis中，并释放锁。**  **（around通知）**
+
+=================================================================================================================================================================================================================================================================================================================
+
+我们在前面说过，商品详情页时访问量比较大的，所以我们需要给整个商品详情页的数据增加缓存(除了商品价格这种实时数据)。因此我们不仅仅需要对获取SKU基本信息的getSkuInfo方法做改造，还需要对其他获取商品详情页数据的方法做改造。
+
+但是，无论对于哪个方法做改造，改造的逻辑几乎都是一样的，即我们需要给多个方法做增强，增加一段通用处理逻辑，此时你会 想到什么呢？当然是AOP
+
+既然要是用AOP，自然需要定义切面，但在定义切面之前，我们需要思考以下两个问题：
+
+- 我们的切入点应该如何定义
+- 我们应该使用什么样的通知类型
+
+针对第一个问题，我们可以结合自定义注解，给需要增强的方法加自定义注解，所以我们的切入点使用@annotation注解找具有目标自定义注解的方法即可。
+
+针对第二个问题，得根据我们的增强逻辑来决定，被增强的方法是访问数据库的，而我们的增强逻辑需要在访问数据库之前先访问缓存，如果缓存中没有，在被增强方法访问数据库之后，我们还需要将数据库中的查询结果，放入Redis，所以很显然，我们应该使用环绕通知。
+
+![](D:\Java\java50th\java50-course-materials\04-微服务\01-课件\13_商品详情页2\商品详情优化.assets\商品详情页优化-通知.png)
+
+![](D:\Java\java50th\java50-course-materials\04-微服务\01-课件\13_商品详情页2\商品详情优化.assets\aop cache.png)
+
+所以我们可以定义自定义注解如下：
+
+```java
+@Target({ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface RedisCache {
+
+    // 给缓存数据增加前缀，以区分不同的缓存数据
+    String prefix() default "cache:";
+
+}
+```
+
+定义切面如下：
+
+```java
+@Component
+@Aspect
+public class RedisCacheAspect {
+
+    @Autowired
+    private RedissonClient redissonClient;
+
+    //  定义一个环绕通知！
+    @Around("@annotation(com.cskaoyan.mall.common.cache.RedisCache)")
+    public Object gmallCacheAspectMethod(ProceedingJoinPoint point) {
+        //  定义一个对象
+        Object obj = null;
+        MethodSignature methodSignature = (MethodSignature) point.getSignature();
+        RedisCache redisCache = methodSignature.getMethod().getAnnotation(RedisCache.class);
+        //   获取到注解上的前缀
+        String prefix = redisCache.prefix();
+        //  组成缓存的key！ 获取方法传递的参数
+        String key = prefix + Arrays.asList(point.getArgs()).toString();
+        RLock lock = null;
+        try {
+            //  可以通过这个key 获取缓存的数据
+            obj = this.redissonClient.getBucket(key).get();
+            if (obj != null) {
+                // 获取到了直接返回
+                return obj;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        try {
+            //  加锁
+            lock = redissonClient.getLock(key + ":lock");
+            lock.lock(RedisConst.SKULOCK_EXPIRE_PX2, TimeUnit.SECONDS);
+            Object redisData = this.redissonClient.getBucket(key).get();
+            // double check
+            if (obj != null) {
+                // 获取到了直接返回
+                return obj;
+            }
+
+            //  执行业务逻辑：直接从数据库获取数据
+            obj = point.proceed(point.getArgs());
+
+              // 将结果放入redis
+            obj = putInRedis(obj, key, methodSignature);
+
+            return obj;
+
+        } finally {
+            //  解锁
+            if (lock != null) {
+                lock.unlock();
+            }
+        }
+    }
+
+   /*
+         将数据放入Redis缓存
+     */
+    private Object putInRedis(Object obj, String key, MethodSignature methodSignature) {
+        try {
+            if (obj == null) {
+                //  防止缓存穿透
+                //obj = new Object();
+               Class returnType = methodSignature.getReturnType();
+                if (returnType.isAssignableFrom(List.class)) {
+                    // 返回值是Collection或List类型
+                    obj = new ArrayList();
+                } else if (Map.class.equals(returnType)) {
+                    // 返回值是Map类型
+                    obj = new HashMap();
+                } else {
+                    // 其他类型
+                    Constructor declaredConstructor = returnType.getDeclaredConstructor();
+                    declaredConstructor.setAccessible(true);
+                    obj = declaredConstructor.newInstance();
+                }
+                //  将缓存的数据变为 Json 的 字符串,默认值的过期时间是1分钟
+                this.redissonClient.getBucket(key).set(obj, RedisConst.SKUKEY_TEMPORARY_TIMEOUT, TimeUnit.SECONDS);
+            } else {
+                //  将缓存的数据变为 Json 的 字符串
+                this.redissonClient.getBucket(key).set(obj, RedisConst.SKUKEY_TIMEOUT, TimeUnit.SECONDS);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return obj;
+    }
+
+}
+
+```
+
+定义好切面后，我们可以在获取详情页数据的时候使用了
+
+```java
+    @RedisCache(prefix = RedisConst.SKUKEY_PREFIX)
+    @Override
+    public SkuInfoDTO getSkuInfo(Long skuId) {
+        ...
+    }
+
+    @RedisCache(prefix = "spuSaleAttrListCheckBySku:")
+    @Override
+    public List<SpuSaleAttributeInfoDTO> getSpuSaleAttrListCheckBySku(Long skuId, Long spuId) {
+	   ...
+    }
+
+    @Override
+    @RedisCache(prefix = "skuValueIdsMap:")
+    public Map<String, Long> getSkuValueIdsMap(Long spuId) {
+        ...
+    }
+
+    @Override
+    @RedisCache(prefix = "categoryHierarchyByCategory3Id:")
+    public CategoryHierarchyDTO getCategoryViewByCategoryId(Long category3Id) {
+	   ...
+    }
+    
+    @Override
+    @RedisCache(prefix = "SpuPosterList:")
+    public List<SpuPosterDTO> findSpuPosterBySpuId(Long spuId) {
+	   ...
+    }
+
+    @RedisCache(prefix = "platformAttributeInfoList:")
+    @Override
+    public List<PlatformAttributeInfoDTO> getPlatformAttrInfoBySku(Long skuId) {
+		...
+    }
+```
 
 
 
