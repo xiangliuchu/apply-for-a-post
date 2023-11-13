@@ -937,7 +937,108 @@ public class RedisCacheAspect {
     }
 ```
 
-## 布隆过滤器
+## 布隆过滤器    解决缓存穿透问题
+
+**在商品上架的时候（onSale（）方法），向布隆过滤器中添加元素；然后在获取商品详情时判断，该元素是否在布隆过滤器中。**
+
+
+
+如果我们想要判断，一个skuId是否存在于数据库，我们只需要在构造布隆过滤器时，将目标集合变为数据库中所有的SKU商品的id集合即可。
+
+Redisson本身对实现了基于Redis的布隆过滤器，可以非常方便的使用
+
+```java
+       //  根据指定名称(key)获取布隆过滤器
+	   RBloomFilter rbloomFilter = redissonClient.getBloomFilter("xxx");
+        // 初始化布隆过滤器，预计统计元素数量为100000，期望误判率为0.01
+       rbloomFilter.tryInit(100000, 0.01);
+        
+         
+       // 向布隆过滤器中添加目标元素
+       rbloomFilter.add(目标元素);
+
+       // 判断目标元素是否存在，返回false表示不存在
+       boolen exists = rbloomFilter.contains(目标元素);
+```
+
+在我们的商品服务中，我们需要在服务启动的时候就执行对于布隆过滤器的初始化(即仅仅需要执行一个操作)，所以我们可以将布隆过滤器的初始化，可以使用CommandLineRunner接口
+
+```java
+public interface CommandLineRunner {
+
+	/**
+	   该方法会被SpringBoot在初始化完Spring容器之后自动调用
+	 * Callback used to run the bean.
+	 * @param args incoming main method arguments
+	 * @throws Exception on error
+	 */
+	void run(String... args) throws Exception;
+
+}
+```
+
+所以我们可以这样使用
+
+```java
+/*
+    这个BloomFilterRunner因为加了Component注解，所以会被放到Spring容器中，
+    Spring容器初始化完毕后，该对象的run方法会被自动调用
+*/
+@Component
+public class BloomFilterRunner implements CommandLineRunner {
+    
+    @Autowired
+    RedissonClient redissonClient;
+    
+    @Override
+    public void run(String... args) throws Exception {
+        RBloomFilter<Long> rbloomFilter = redissonClient.getBloomFilter(RedisConst.SKU_BLOOM_FILTER);
+        // 初始化布隆过滤器，预计统计元素数量为100000，期望误差率为0.01
+        rbloomFilter.tryInit(100000, 0.01);
+    }
+}
+```
+
+然后我们在上架SKU商品的时候，向布隆过滤器中添加元素
+
+```java
+    @Override
+    public void onSale(Long skuId) {
+		
+        /* 
+           ...
+        */
+        
+        //向添加布隆过滤器添加元素
+        RBloomFilter<Long> rbloomFilter = redissonClient.getBloomFilter(RedisConst.SKU_BLOOM_FILTER);
+        rbloomFilter.add(skuId);
+
+    }
+```
+
+在处理获取详情页商品信息的请求时，首先判断布隆过滤器中是否存在该元素，如果不存在，则直接返回默认值
+
+```java
+@Override
+    public ProductDetailDTO getItemBySkuId(Long skuId) {
+
+        ProductDetailDTO productDetailDTO = new ProductDetailDTO();
+        RBloomFilter<Long> bloomFilter = redissonClient.getBloomFilter(RedisConst.SKU_BLOOM_FILTER);
+        if (!bloomFilter.contains(skuId)) {
+            // 如果不存在，则返回默认值
+            return productDetailDTO;
+        }
+
+		/*
+		  ....
+		*/
+        return productDetailDTO;
+    }
+```
+
+
+
+
 
 
 
