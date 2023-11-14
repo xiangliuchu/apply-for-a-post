@@ -1094,6 +1094,160 @@ public class FeignConsumerApplication {
 
 
 
+## Elastic Search       [Elastic Search2](D:\Java\java50th\java50-course-materials\04-微服务\01-课件\15_elasticsearch-2\Elastic Search2.md)  ←Java api 
+
+### match all
+
+match all 相当于不加查询条件搜索所有的文档 
+
+```json
+GET product/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "from": 0,
+  "size": 100
+}
+```
+
+### term查询
+
+erm查询和字段类型有关系，首先回顾一下ElasticSearch两个数据类型
+
+ ElasticSearch两个数据类型：
+
+- text：会分词，不支持聚合
+- keyword：不会分词，将全部内容作为一个词条，支持聚合
+
+**term查询：不会对查询条件进行分词。但是注意，term查询，查询text类型字段时，文档中类型为text类型的字段本身仍然会分词**
+
+```json
+GET product/_search
+{
+  "query": {
+    "term": {
+      "title": {
+        "value": "手机充电器"
+      }
+    }
+  }
+}
+```
+
+### match查询
+
+match查询的特征：
+
+•会对查询条件进行分词。
+
+•然后将分词后的查询条件和目标字段分词后的词条进行等值匹配
+
+•默认取并集（OR），即只要查询条件中的一个分词和目标字段值的一个分词(词条)匹配，即认为匹配查询条件
+
+```json
+# match查询
+GET product/_search
+{
+  "query": {
+    "match": {
+      "title": "手机充电器"
+    }
+  },
+  "size": 500
+}
+```
+
+**match 的默认搜索（or 并集）**例如：华为手机，会分词为 “华为”，“手机” 只要出现其中一个词条都会认为词条匹配
+
+**match的 and（交集） 搜索**，例如：例如：华为手机，会分词为 “华为”，“手机”  但要求“华为”，和“手机”同时出现在词条中，才算词条匹配
+
+```json
+GET product/_search
+{
+  "query": {
+    "match": {
+      "title": {
+        "query": "华为手机",
+        "operator": "and"    #如果是or，那么"小米"或 "手机"任何一个匹配，都会匹配成功 
+      }
+    }
+  },
+  "size": 500
+}
+```
+
+###  模糊查询
+
+####  wildcard查询
+
+wildcard查询: wildcard查询：会对查询条件进行分词。还可以使用通配符 ?（任意单个字符） 和  * （0个或多个字符）
+
+```json
+# wildcard 查询。查询条件分词，模糊查询
+GET product/_search
+{
+  "query": {
+    "wildcard": {
+      "title": {
+        "value": "手机*"
+      }
+    }
+  }
+}
+```
+
+#### 正则查询
+
+```
+[A-Z a-z 0-9_] 表示一个大小写英文字符，或者0-9的数字字符，或者下划线字符_
+
++号多次出现
+
+(.)*为任意字符
+正则查询取决于正则表达式的效率
+```
+
+```json
+GET product/_search
+{
+  "query": {
+    "regexp": {
+      "title": "[A-Z a-z 0-9_]+(.)*"
+    }
+  }
+}
+```
+
+#### 前缀查询
+
+ 对keyword类型支持比较好
+
+```json
+# 前缀查询 对keyword类型支持比较好
+GET product/_search
+{
+  "query": {
+    "prefix": {
+      "brandName": {
+        "value": "三"
+      }
+    }
+  }
+}
+```
+
+####  模糊查询Java API
+
+```java
+//模糊查询
+WildcardQueryBuilder wildQuery = QueryBuilders.wildcardQuery("title", "充电*");//充电后多个字符
+//正则查询
+ RegexpQueryBuilder regexQuery = QueryBuilders.regexpQuery("title", "[A-Z a-z 0-9_]+(.)*");
+ //前缀查询
+ PrefixQueryBuilder prefixQuery = QueryBuilders.prefixQuery("title", "充电");
+```
+
 
 
 
