@@ -1583,7 +1583,314 @@ GET product/_search
 <em>手机</em>
 ```
 
+```json
+GET product/_search
+{
+  "query": {
+    "match": {
+      "title": "充电器"
+    }
+  },
+  "highlight": {
+    "fields": {
+      "title": {
+        "pre_tags": "<font color='red'>",
+        "post_tags": "</font>"
+      }
+    }
+  }
+}
+```
+
+## Elastic Search       Java中的使用
+
+### 总结 （共四步如下）
+
+**1. 先引入依赖spring-boot-starter-data-elasticsearch ， 然后在配置文件中添加配置；2. 然后定义一个实体类去映射ES索引中的文档；3 . 然后定义一个接口去继承ElasticsearchRepository，注入其对象后就可以快速进行crud（有内置的方法更简便）、分页、排序等简单操作 （上架、下架、更新热点）；4.引入ElasticsearchRestTemplate用来进行更复杂的自定义查询（crud要自己构造更复杂），如构造自定义分页，高亮，nested以及聚合查询等 **
 
 
 
+### 基础配置 
+
+要使用Elasticsearch我们需要引入如下依赖： 
+
+```xml
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+            <version>2.1.7.RELEASE</version>
+        </dependency>
+```
+
+还需要在配置文件中增加如下配置
+
+```yml
+spring:
+  elasticsearch:
+    rest:
+      # es server的地址
+      uris: 192.168.0.102:9200
+      # 连接超时时间
+      connection-timeout: 6s
+      # 访问超时时间
+      read-timeout: 10s
+```
+
+### 定义实体类映射ES文档
+
+类比于MyBatis-Plus可以定义实体类去映射数据库中的表中的数据，使用Spring Data Elasticsearch时，我们也可以通过定义一个实体类映射ES索引中的文档。
+
+**注意@Id注解**  **这里的类型是后面继承ElasticsearchRepository接口时需要的第二个泛型的类型；也就是这个Long类型**
+
+```java
+@Data
+@Document(indexName = "goods" , shards = 1,replicas = 0)  //一个分片，0个副本
+public class Goods {
+    // 商品Id skuId _id
+    @Id
+    private Long id;
+
+    @Field(type = FieldType.Keyword, index = false)
+    private String defaultImg;
+
+    //  es 中能分词的字段，这个字段数据类型必须是 text！keyword 不分词！
+    @Field(type = FieldType.Text, analyzer = "ik_max_word")
+    private String title;
+    
+         .
+         .
+         .
+             
+
+    @Field(type = FieldType.Keyword)
+    private String thirdLevelCategoryName;
+
+    //  商品的热度！ 我们将商品被用户点查看的次数越多，则说明热度就越高！
+    @Field(type = FieldType.Long)
+    private Long hotScore = 0L;
+
+    // 平台属性集合对象
+    // Nested 支持嵌套查询
+    @Field(type = FieldType.Nested)
+    private List<SearchAttr> attrs;
+
+}
+```
+
+```java
+/*
+   该类映射nested平台属性
+*/
+@Data
+public class SearchAttr {
+    // 平台属性Id
+    @Field(type = FieldType.Long)
+    private Long attrId;
+    // 平台属性值名称
+    @Field(type = FieldType.Keyword)
+    private String attrValue;
+    // 平台属性名
+    @Field(type = FieldType.Keyword)
+    private String attrName;
+}
+```
+
+**注意：**在Goods类上，通过添加@Document注解，我们将Goods类映射的文档所属的索引：
+
+- @Document注解的index属性，用来定义实体类所映射的文档所属的目标索引名称
+- @Document的shards属性，表示目标索引的住分片数量
+- @Document的replicas属性，表示每个主分片所拥有的副本分片的数量
+
+**在Goods类的成员变量Id上通过添加@Id注解指定，Id成员变量映射到Goods索引中文档的id字段，同时也映射到文档的唯一表示_id字段。**
+
+在Goods类的其他成员变量上，通过添加@Field注解，定义成员变量和文档字段的映射关系：
+
+- 默认同名成员变量，映射到文档中的同名字段(也可以由@Field注解的name属性显示指定)
+- 通过@Field注解的type属性指定文档中同名字段的数据类型
+- 通过@Field注解的analyzer属性，指定成员变量所映射的文档字段所使用的的分词器
+
+
+
+### xxxRepository继承ElasticsearchRepository
+
+**定义一个接口去继承ElasticsearchRepository，注入其对象后就可以快速进行crud（有内置的方法更简便）、分页、排序等简单操作 （上架、下架、更新热点）**
+
+类比于Mybatis-Plus中定义BaseMaper子接口即可对单表做增删改查的操作，Spring Data Elastisearch中我们可以通过定义ElasticsearchRepository子接口，迅速实现对索引中的文档数据的增删改查，以及通过自定义方法，实现自定义查询。
+
+```java
+public interface GoodsRepository extends ElasticsearchRepository<Goods,Long> {
+
+}
+```
+
+**ElasticsearchRepository**接口需要接收**两个泛型，第一个泛型即映射实体类，第二个泛型是在实体类中加了@Id注解的成员变量的数据类型，即映射到文档唯一标识_id字段的成员变量类型。**
+
+一旦我们定义好了ElasticsearchRepository的子接口，马上就可以实现对goods索引中文档的增删改查功能
+
+```java
+    // 注入repository对象
+    @Autowired
+    private GoodsRepository goodsRepository;
+
+    
+    // 保存单个文档对象
+    Goods good = ....
+    goodsRepository.save(good);
+
+
+
+    // 批量保存多个文档对象
+    List<Goods> goods = ...
+    goodsRepository.save(goods);
+
+   // 根据id查询
+   goodsRepository.findById(id);
+
+   // 根据id删除
+   goodsRepository.deleteById(id);
+    
+```
+
+同时，我们还需要注意一点，一旦我们定义好了ElasticsearchRepository接口，而且被SpringBoot启动类扫描到，那么在应用**启动**的时候，如果ElasticsearchRepository子接口所访问的索引在ES中不存在，Spring Data Elasticsearch会在ES中**自动创建索引，并根据映射实体类定义索引的映射**。
+
+Repository好用，但是具有一定的局限性，如果面对比较复杂的查询，此时就只能使用Spring Data Elasticsearch提供的另外一个工具ElasticsearchRestTemplate了。
+
+
+
+### 引入ElasticsearchRestTemplate
+
+为了构造更复杂的查询，引入ElasticsearchRestTemplate。 **直接@Autowired注入即可使用**。然后构造自定义分页，高亮，nested以及聚合查询，并发起请求
+
+```java
+
+    @Autowired
+    ElasticsearchRestTemplate restTemplate;
+
+    @Test
+    public void testRestTemplate() {
+        // 该Builder包含所有搜索请求的参数
+        NativeSearchQueryBuilder queryBuilder = new NativeSearchQueryBuilder();
+
+
+        // 获取bool查询Builder
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+
+
+        // 构造bool查询中match查询
+        MatchQueryBuilder matchQuery = QueryBuilders.matchQuery("title", "小米手机");
+        // 将该查询加入bool查询must中
+        boolQueryBuilder.must(matchQuery);
+
+        TermQueryBuilder subQueryForAttrNested = QueryBuilders.termQuery("attrs.attrValue", "8G");
+        // 构造nested查询
+        NestedQueryBuilder attrsNestedQuery = QueryBuilders.nestedQuery("attrs", subQueryForAttrNested, ScoreMode.None);
+        // 将nested查询作为一个过滤条件
+        boolQueryBuilder.filter(attrsNestedQuery);
+
+
+        // 将整个bool查询添加到NativeSearchQueryBuilder
+        queryBuilder.withQuery(boolQueryBuilder);
+
+        // 构造分页参数
+        //PageRequest price = PageRequest.of(0, 10, Sort.by(Sort.Order.desc("price")));
+        PageRequest price = PageRequest.of(0, 10);
+        // 向NativeSearchQueryBuilder添加分页参数
+        queryBuilder.withPageable(price);
+
+        // 按照指定字段值排序
+        FieldSortBuilder priceSortBuilder = SortBuilders.fieldSort("price").order(SortOrder.ASC);
+        queryBuilder.withSort(priceSortBuilder);
+
+        // 构造高亮参数
+        HighlightBuilder highlightBuilder = new HighlightBuilder();
+        highlightBuilder.field("title").preTags("<font color='red'>").postTags("</font>");
+        // 向NativeSearchQueryBuilder添加高亮参数
+        queryBuilder.withHighlightBuilder(highlightBuilder);
+
+        // 设置品牌聚合(平台属性等的聚合也是相同的方式)
+        TermsAggregationBuilder termsAggregationBuilder = AggregationBuilders.terms("tmIdAgg").field("tmId")
+                .subAggregation(AggregationBuilders.terms("tmNameAgg").field("tmName"))
+                .subAggregation(AggregationBuilders.terms("tmLogoUrlAgg").field("tmLogUrl"));
+
+
+        // 向NativeSearchQueryBuilder添加聚合参数
+        queryBuilder.addAggregation(termsAggregationBuilder);
+
+        // 结果集过滤，只包含原始文档的id，defaultImg，title，price
+        queryBuilder.withFields("id", "defaultImg", "title", "price");
+
+        // 使用ElasticsearchRestTemplate发起搜索请求
+        NativeSearchQuery build = queryBuilder.build();
+        SearchHits<Goods> search = restTemplate.search(build, Goods.class);
+
+        //封装所有的查询数据
+        SearchResponseDTO searchResponseDTO = new SearchResponseDTO();
+
+        // 获取满足条件的总文档数量
+        long totalHits = search.getTotalHits();
+        // 设置查询到的总文档条数
+        searchResponseDTO.setTotal(totalHits);
+
+
+        // 获取包含所有命中文档的SearchHit对象
+        List<SearchHit<Goods>> searchHits = search.getSearchHits();
+
+
+        // 处理搜索到的结果集即SearchHit<Goods>集合, 并使用高亮字符串替换
+        List<GoodsDTO> goodsList = searchHits.stream().map(hit -> {
+            // 获取命中的文档
+            Goods content = hit.getContent();
+
+            //获取高亮字段
+            List<String> title = hit.getHighlightField("title");
+
+            // 用高亮字段替换
+            content.setTitle(title.get(0));
+            // 将Goods对象转化为GoodsDTO对象
+            GoodsDTO goodsDTO = goodsConverter.goodsPO2DTO(content);
+            return goodsDTO;
+        }).collect(Collectors.toList());
+
+        // 设置查询到的结果列表
+        searchResponseDTO.setGoodsList(goodsList);
+
+        // 从品牌聚合中获取品牌集合
+
+        // 根据id获取品牌id terms聚合结果
+       Terms terms = search.getAggregations().get("tmIdAgg");
+        List<SearchResponseTmDTO> trademarkList = terms.getBuckets().stream().map(tmIdBucket -> {
+            // 封装品牌数据
+            SearchResponseTmDTO searchResponseTmDTO = new SearchResponseTmDTO();
+
+            String tmIdStr = tmIdBucket.getKeyAsString();
+            // 获取品牌id
+            Long tmId = Long.parseLong(tmIdStr);
+            // 设置品牌id
+            searchResponseTmDTO.setTmId(tmId);
+
+            // 获取品牌名称聚合(子聚合)
+            Terms tmNameAgg = tmIdBucket.getAggregations().get("tmNameAgg");
+            // 通过聚合桶的名称获取品牌名称
+            String tmName = tmNameAgg.getBuckets().get(0).getKeyAsString();
+            // 设置品牌名称
+            searchResponseTmDTO.setTmName(tmName);
+
+
+            // 获取品牌logo聚合(子聚合)
+            Terms tmLogoUrlAgg = tmIdBucket.getAggregations().get("tmLogoUrlAgg");
+            // 通过聚合桶的名称获取品牌名称
+            String tmLogoUrl = tmLogoUrlAgg.getBuckets().get(0).getKeyAsString();
+            // 设置品牌名称
+            searchResponseTmDTO.setTmLogoUrl(tmLogoUrl);
+
+            return searchResponseTmDTO;
+        }).collect(Collectors.toList());
+
+        // 设置聚合品牌数据
+        searchResponseDTO.setTrademarkList(trademarkList);
+        
+        // .....
+
+    }
+```
 
