@@ -1060,6 +1060,42 @@ public class BloomFilterRunner implements CommandLineRunner {
 
 
 
+## OpenFeign
+
+**openfeign只在服务的消费端使用，对于服务的提供端来说是无感的，只需要关注自身的逻辑业务即可。**
+
+**只需要在需要在服务消费端写一个xxxClient接口，添上@FeignClient注解，接口里面是想要使用的方法（要一模一样），然后再在启动类上添加@EnableFeignClients注解即可**
+
+
+
+在使用@FeignClient注解时，value属性用于指定要调用的目标服务的名称。**该名称通常是服务注册中心中注册的服务名**。
+
+```java
+// 注意，这里FeignClient的名字是调用的服务的名称 / 服务中心注册的服务名
+@FeignClient("feign-provider-8005")
+public interface DemoServiceClient{
+    @GetMapping("/feign/hello")
+    String sayHello(@RequestParam(name = "name")String name);
+}
+```
+
+在启动类上加注解@EnableFeignClients，才能让我们定义的FeignClient生效
+
+```java
+@SpringBootApplication
+@EnableDiscoveryClient
+@EnableFeignClients
+public class FeignConsumerApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(FeignConsumerApplication.class, args);
+    }
+}
+```
+
+
+
+
+
 
 
 
