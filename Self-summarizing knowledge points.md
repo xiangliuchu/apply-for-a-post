@@ -1248,9 +1248,340 @@ WildcardQueryBuilder wildQuery = QueryBuilders.wildcardQuery("title", "充电*")
  PrefixQueryBuilder prefixQuery = QueryBuilders.prefixQuery("title", "充电");
 ```
 
+### querystring
+
+queryString 多条件查询
+
+1. 会对查询条件进行分词。
+2. 然后将分词后的查询条件和词条进行等值匹配
+3. 默认取并集（OR）
+4. 可以指定多个查询字段
+
+**query_string：可以识别query中的连接符（or 、and）**
+
+```json
+# queryString
+
+GET product/_search
+{
+  "query": {
+    "query_string": {
+      "fields": ["title","sell_point"], 
+      "query": "耳机 AND 充电器"
+    }
+  }
+}
+```
+
+java代码
+
+```java
+QueryStringQueryBuilder query = QueryBuilders.queryStringQuery("耳机充电器").field("title").field("sellPoint");
+```
+
+**simple_query_string：不识别query中的连接符（or 、and）**，查询时会将 “耳机”、"and"、“充电器”分别进行查询
+
+```json
+GET product/_search
+{
+  "query": {
+    "simple_query_string": {
+      "fields": ["title","sell_point"], 
+      "query": "耳机 AND 充电器"
+    }
+  }
+}
+```
+
+java代码
+
+```java
+QueryStringQueryBuilder query = QueryBuilders.queryStringQuery("耳机充电器").field("title").field("sellPoint")
+```
 
 
 
+### 范围& 排序查询
+
+```json
+GET product/_search
+{
+  "query": {
+    "range": {
+      "price": {
+        "gte": 100,
+        "lte": 1000
+      }
+    }
+  },
+  "sort": [
+    {
+      "price": {
+        "order": "desc"
+      }
+    }
+  ]
+}	
+```
+
+```java
+ //范围查询 以price 价格为条件
+RangeQueryBuilder query = QueryBuilders.rangeQuery("price");
+
+//指定下限
+query.gte(100);
+//指定上限
+query.lte(1000);
+
+sourceBuilder.query(query);
+
+//排序  价格 降序排列
+sourceBuilder.sort("price",SortOrder.DESC);
+```
+
+### 复合查询 bool
+
+ boolQuery：对多个查询条件连接。其组成主要分为如下四个部分：
+
+1. must（and）：条件必须成立
+2. must_not（not）：条件必须不成立
+3. should（or）：条件可以成立
+4. filter：条件必须成立，性能比must高。不会计算得分
+
+```json
+# must
+GET product/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+           "term": {
+             "title": {
+               "value": "充电器"
+             }
+           }
+        },
+        {
+          "match": {
+            "sellPoint": "快充"
+          }
+        }
+      ]
+    }
+  }
+}
+
+```
+
+
+
+```json
+# must_not
+GET product/_search
+{
+  "query": {
+    "bool": {
+      "must_not": [
+        {
+           "match": {
+             "title": "充电器"
+           }
+        }
+      ]
+    }
+  }
+}
+```
+
+
+
+```json
+# should 中的多个条件是or关系
+GET product/_search
+{
+  "query": {
+    "bool": {
+      "should": [
+          {
+           "term": {
+             "title": {
+               "value": "充电器"
+             }
+           }
+        },
+        {
+          "term": {
+             "sellPoint": {
+               "value": "小菜鸡"
+             }
+           }
+        }
+      ]
+    }
+  }
+}
+```
+
+
+
+```json
+# filter
+GET product/_search
+{
+  "query": {
+    "bool": {
+      "filter": [
+          {
+           "term": {
+             "title": {
+               "value": "充电器"
+             }
+           }
+        },
+        {
+          "match": {
+            "sellPoint": "快充"
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+这里有几点需要注意：
+
+- 一个复合查询中，可以同时包含must，must not，should，filter中的一个或多个部分
+- 每一部分，都可以包含多个查询条件(只有should中的多个查询条件是or关系)
+- 当存在must，或者filter的时候，should中的条件默认不生效
+- must和filter都可以表示同时满足多个条件的查询，但是不同的地方在于must会计算文档的近似度得分，filter不会(must_not也不会)
+
+```json
+# boolquery 包含多个部分
+GET product/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "term": {
+            "title": {
+              "value": "充电器"
+            }
+          }
+        }
+      ],
+      "filter":[ 
+        {
+        "term": {
+          "title": "原装"
+        }
+       },
+       {
+         "range":{
+          "price": {
+            "gte": 40,
+            "lte": 100
+         }
+         }
+       }
+      
+      ]
+    }
+  }
+}
+
+```
+
+JAVA API:
+
+布尔查询：boolQuery 
+
+1. 查询商品为(title): 充电器 
+2. 查询过滤条件：原装
+3. 查询价格在：40-100 
+
+```java
+        //1.构建boolQuery
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        //2.构建各个查询条件
+        //2.1 查询品牌名称为:华为
+        TermQueryBuilder termQueryBuilder = QueryBuilders.termQuery("title", "耳机");
+        boolQuery.must(termQueryBuilder);
+        //2.2. 查询标题包含：手机
+        MatchQueryBuilder matchQuery = QueryBuilders.matchQuery("title", "原装");
+        boolQuery.filter(matchQuery);
+
+        //2.3 查询价格在：40-100
+        RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("price");
+        rangeQuery.gte(40);
+        rangeQuery.lte(100);
+        boolQuery.filter(rangeQuery);
+
+        sourceBuilder.query(boolQuery);
+```
+
+### 聚合查询
+
+聚合查询分为两种类型:
+
+- 指标聚合：相当于MySQL的聚合函数。max、min、avg、sum等
+- 桶聚合：相当于MySQL的 group by 操作。不要对text类型的数据进行分组，会失败。
+
+```json
+# 聚合查询
+
+# 指标聚合 聚合函数
+
+GET product/_search
+{
+  "query": {
+    "match": {
+      "title": "耳机"
+    }
+  },
+  "aggs": {
+    "max_price": {
+      "max": {
+        "field": "price"
+      }
+    }
+  }
+}
+
+# 桶聚合  分组
+GET product/_search
+{
+  "query": {
+    "match": {
+      "title": "充电器"
+    }
+  },
+  "aggs": {
+    "price_bucket": {
+      "terms": {
+        "field": "price",
+        "size": 100
+      }
+    }
+  }
+}
+```
+
+### 高亮查询
+
+高亮三要素：
+
+1. 高亮字段
+2. 前缀
+3. 后缀
+
+默认前后缀 ：em
+
+```html
+<em>手机</em>
+```
 
 
 
