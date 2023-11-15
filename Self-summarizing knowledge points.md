@@ -1894,6 +1894,24 @@ Repository好用，但是具有一定的局限性，如果面对比较复杂的�
     }
 ```
 
+### ElasticsearchRestTemplate 的search()方法
+
+`ElasticsearchRestTemplate` 是 Spring Data Elasticsearch 提供的一个类，用于与 Elasticsearch 进行交互。
+
+**`search()` 方法是 `ElasticsearchRestTemplate` 类中的一个方法，用于执行 Elasticsearch 的搜索操作。它接受一个 `SearchQuery` 对象作为参数，并返回一个 `SearchHits` 对象，该对象包含了搜索结果中的命中（hits）信息。**
+
+**`SearchQuery` 是一个接口，用于构建 Elasticsearch 的查询条件。你可以使用 `SearchQuery` 的实现类，如 `NativeSearchQuery` 或 `CriteriaQuery`，来构建不同类型的查询。这些查询可以包含各种条件、过滤器、排序等。**
+
+**当调用 `search()` 方法时，`ElasticsearchRestTemplate` 会将 `SearchQuery` 对象转换为 Elasticsearch 的查询语句，并发送给 Elasticsearch 服务器执行搜索操作。然后，它会解析 Elasticsearch 返回的结果，并将结果封装在 `SearchHits` 对象中返回。**
+
+你可以使用 `SearchHits` 对象获取搜索结果的详细信息，如总命中数、每个命中文档的得分、文档的字段值等。
+
+需要注意的是，`ElasticsearchRestTemplate` 是基于 Elasticsearch 的 REST API 进行操作的，因此在使用之前，你需要配置好 Elasticsearch 的连接信息，包括主机、端口等。
+
+这些是关于 `ElasticsearchRestTemplate` 的 `search()` 方法的基本说明，具体的用法和更多细节可以参考 Spring Data Elasticsearch 的文档或者相关的 API 文档。
+
+
+
 ## 热度排名
 
 逻辑是这样的：**1.** 当你搜索商品，点进商品详情页之后，**商品服务**就会远程**调用 搜索服务**的增加热度方法；**2.** 搜索服务就会先将热度数据保存到Redis中（因为点击量大，减小压力）; **3.** 等到比如有10次了，然后再写入到ES中。**4.** ES在自定义的搜索条件中， 会有根据热度降序排序，这样就完成了热度排名。
