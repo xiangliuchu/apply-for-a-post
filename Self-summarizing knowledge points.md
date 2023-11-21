@@ -1062,6 +1062,8 @@ public class BloomFilterRunner implements CommandLineRunner {
 
 ## OpenFeign
 
+### 基本使用
+
 **openfeign只在服务的消费端使用，对于服务的提供端来说是无感的，只需要关注自身的逻辑业务即可。**
 
 **只需要在需要在服务消费端写一个xxxClient接口，添上@FeignClient注解，接口里面是想要使用的方法（要一模一样），然后再在启动类上添加@EnableFeignClients注解即可**
@@ -1091,6 +1093,18 @@ public class FeignConsumerApplication {
     }
 }
 ```
+
+### FeignInterceptor拦截器   通过拦截器在服务与服务之间传递用户信息
+
+
+
+待完善... 
+
+
+
+
+
+
 
 
 
