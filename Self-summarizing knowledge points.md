@@ -50,6 +50,24 @@
 4. **支持常见的HTTP方法**：@RestController 注解支持常见的HTTP方法，如GET、POST、PUT、DELETE等，通过不同的请求映射路径和方法来处理不同的请求。
 5. **无需额外的视图解析器**：由于 @RestController 注解主要用于返回数据而不是视图，因此不需要额外配置视图解析器。
 
+### @RequestBody，表示接收时是json
+
+Json请求参数仍然是在形参中进行接收，可以使用以下几种类型来接收
+
+- **String**
+- **引用类型对象**
+- **Map**
+
+**形参前需要增加一个注解@RequestBody**
+
+> @RequestBody和@ResponseBody这两个注解都是和Json打交道的时候使用的注解
+>
+> 接收的时候用的是@RequestBody
+>
+> 响应的时候用的是@ResponseBody
+
+
+
 ###  @Autowired用于组件的注入，如方法注入、成员变量等     详细见：[SpringIOC](D:\Java\java50th\java50-course-materials\03-JavaEE&Spring框架\02-笔记\Day18-20-Spring-IOC.md)
 
 ###  @Qualifier
