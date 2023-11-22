@@ -1098,13 +1098,9 @@ public class FeignConsumerApplication {
 
 
 
-待完善... 
-
-
-
-
-
-
+1. 网关路由分发到web-all时有用户的信息（网关通过cookie中的token去获取）；
+2. web-all远程调用order服务时没有用户的信息（因为这是另一个请求） ；
+3. 通过FeignInterceptor（会在远程调用发起请求前生效，也就是web-all在远程调用前生效），从web-all阶段获取用户的信息，然后把信息添加到请求头中；这样web-all调用order服务的请求头里有就有用户的信息了。
 
 
 
