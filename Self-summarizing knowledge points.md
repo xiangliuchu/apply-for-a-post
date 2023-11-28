@@ -2079,15 +2079,13 @@ RocketMQ 可以用于构建各种分布式系统中的消息通信模块，例�
 
 ## RocketMQ的代码中的实际用法
 
-待补充 ... 
-
-在common服务里有个一个BaseProducer里面有init（）方法，sendMessage（）方法，sendDelayMessage（）方法。
-
-在SkuServiceImpl中onSale方法里，会发送一个上架消息，offSale会发送一个下架消息。
 
 
+1. 在**common服务**里有个一个BaseProducer里面有init（）方法，sendMessage（）方法，sendDelayMessage（）方法。
 
+2. 在**商品服务**的SkuServiceImpl中**onSale（）**方法里，会调用一个common服务的BaseProducer来生产一个**上架消息**(注入进来，调用相应的方法即可)，**offSale（）**方法会发送一个**下架消息**。
 
+3. 在**搜索服务**里会单独写两个消费者类，创建消息消费者，然后设置相同的注册中心，订阅相同的主题，然后再设置好消息监听器，监听到上架的消息后，便会调用searchService中的upperGoods（）方法，用消息中的skuId，将相应的商品储存es中。
 
 
 
