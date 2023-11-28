@@ -106,6 +106,43 @@ public class UserService {
 
 总而言之，`@Qualifier` 注解是Spring框架中用于解决依赖注入中多个候选对象歧义性的关键注解之一。它允许精确指定要注入的bean对象，以确保正确的依赖关系被建立。
 
+### @PostConstruct
+
+`@PostConstruct` 是一个 Java 注解，用于标记一个方法，**在 Spring 容器初始化 bean 之后立即执行该方法**。它被用作初始化回调方法，用于在 bean 的依赖注入完成后执行一些必要的初始化逻辑。
+
+**当一个 bean 被创建并且其依赖关系已经注入完成后，Spring 容器会调用带有 `@PostConstruct` 注解的方法。这个方法可以用来执行任何初始化操作，例如初始化成员变量、建立数据库连接、加载配置等。**
+
+使用 `@PostConstruct` 注解的方法必须满足以下条件：
+- 方法不能有任何参数。
+- 方法的访问修饰符可以是 public、protected 或者默认的包内可见性。
+- 方法不能被 static、final 或者 abstract 修饰。
+- 方法只能在单例的 bean 上使用。
+
+示例代码如下所示：
+
+```java
+@Component
+public class MyBean {
+
+    private String name;
+
+    @PostConstruct
+    public void init() {
+        // 执行初始化逻辑
+        this.name = "Initialized name";
+        // 其他初始化操作...
+    }
+
+    // 其他方法...
+}
+```
+
+在上面的例子中，`init()` 方法被标记为 `@PostConstruct`，当 Spring 容器创建 `MyBean` 实例并完成依赖注入后，会自动调用 `init()` 方法。在 `init()` 方法中，可以执行任何需要在 bean 初始化后进行的操作。
+
+总而言之，`@PostConstruct` 注解可以确保在 Spring bean 的依赖注入完成后立即执行指定的初始化方法，以便进行一些必要的初始化操作。
+
+
+
 ## mybatis-plus中的分页插件  注意看getSize(), getPages()是表示的什么
 
 MyBatis Plus自带分页插件，只要简单的配置即可实现分页功能
