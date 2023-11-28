@@ -2015,3 +2015,70 @@ RocketMQ 可以用于构建各种分布式系统中的消息通信模块，例�
 ## RocketMQ的代码中的实际用法
 
 待补充 ... 
+
+
+
+## yaml配置文件的解读示例
+
+```yaml
+spring:
+  application:
+    name: server-gateway
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 120.46.174.115:8848
+      config:
+        server-addr: 120.46.174.115:8848
+        file-extension: yaml
+        shared-configs:
+          - data-id: common.yaml
+        timeout: 10000
+# 网关会使用 配置中心里面哪些配置文件？
+# common.yaml
+# server-gateway-dev.yaml
+```
+
+**解读：**
+
+这段 YAML 配置文件用于配置 Spring Boot 应用程序的属性和 Nacos 服务注册与配置中心。
+
+```yaml
+spring:
+  application:
+    name: service-product
+```
+
+- `spring.application.name`：指定 Spring Boot 应用程序的名称为 "service-product"。这个名称将用于服务注册和其他相关配置。
+
+```yaml
+profiles:
+  active: dev
+```
+
+- `profiles.active`：指定当前活动的配置文件为 "dev"。这表示应用程序将使用 "dev" 配置文件中的属性和配置。
+- **dev**表示开发环境，**test**表示测试环境，**prod**表示生产环境
+
+```yaml
+cloud:
+  nacos:
+    discovery:
+      server-addr: 120.46.174.115:8848
+    config:
+      server-addr: 120.46.174.115:8848
+      file-extension: yaml
+      shared-configs:
+        - data-id: common.yaml
+```
+
+- `cloud.nacos.discovery.server-addr`：指定 Nacos 服务注册中心的地址为 "120.46.174.115:8848"。这将告诉应用程序在此地址上注册和发现服务。
+- `cloud.nacos.config.server-addr`：指定 Nacos 配置中心的地址为 "120.46.174.115:8848"。这将告诉应用程序从此地址获取配置属性。
+- `cloud.nacos.config.file-extension`：指定配置文件的扩展名为 "yaml"。这表示应用程序将从 Nacos 配置中心读取以 YAML 格式存储的配置文件。
+- `cloud.nacos.config.shared-configs`：指定共享的配置文件列表。在这个例子中，只有一个共享配置文件 "common.yaml"。
+
+总结起来，这个配置文件指定了应用程序的名称为 "service-product"，活动配置文件为 "dev"，并设置了 Nacos 的服务注册和配置中心地址。它还指定了应用程序将从 Nacos 配置中心读取以 YAML 格式存储的共享配置文件 "common.yaml"。
+
+
+
