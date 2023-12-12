@@ -2266,13 +2266,19 @@ nacos 已经整合了ribbon，配置文件中设置相关策略
 
 待补充 ...  看收藏 微服务篇	
 
+### Ribbon负载均衡
 
+Ribbon是一个客户端负载均衡器，能够给HTTP客户端带来灵活的控制。其实现的核心功能，就是一组选择策略，帮助我们在一个服务集群中，选择一个服务实例，并向该实例发起调用请求。它所支持的负载均衡策略如下:
 
-
-
-
-
-
+| 策略               | 实现类                    | 描述                                                         |
+| ------------------ | ------------------------- | ------------------------------------------------------------ |
+| 随机策略           | RandomRule                | 随机选择server                                               |
+| 轮训策略           | RoundRobinRule            | 轮询选择                                                     |
+| 重试策略           | RetryRule                 | 对选定的负载均衡策略(轮训)之上重试机制，在一个配置时间段内当选择服务不成功，则一直尝试使用该策略选择一个可用的服务； |
+| 最低并发策略       | BestAvailableRule         | 逐个考察服务，如果服务断路器打开，则忽略，再选择其中并发连接最低的服务 |
+| 可用过滤策略       | AvailabilityFilteringRule | 过滤掉因一直失败并被标记为circuit tripped的服务，过滤掉那些高并发链接的服务（active connections超过配置的阈值) |
+| 响应时间加权重策略 | WeightedResponseTimeRule  | 根据server的响应时间分配权重，响应时间越长，权重越低，被选择到的概率也就越低。响应时间越短，权重越高，被选中的概率越高，这个策略很贴切，综合了各种因素，比如：网络，磁盘，io等，都直接影响响应时间 |
+| 区域权重策略       | ZoneAvoidanceRule         | 综合判断服务所在区域的性能，和服务的压力，轮询选择server并且判断一个AWS Zone的运行性能是否可用，剔除不可用的Zone中的所有server |
 
 
 
@@ -2407,6 +2413,54 @@ http{
    - 缺点：相对于继承Thread类，实现Runnable接口需要单独创建一个Thread实例，并将Runnable实例作为参数传递给Thread构造函数。这增加了一些额外的代码和复杂性，使得代码稍微复杂一些。
 
 总体而言，选择继承Thread类还是实现Runnable接口取决于具体的需求和设计考虑。如果只是简单地创建一个线程并执行某些任务，继承Thread类是比较方便的。但如果需要更好的代码扩展性和可重用性，以及避免单继承的限制，实现Runnable接口是更好的选择。此外，还可以使用Java 8引入的函数式接口`java.util.concurrent.Callable`和`java.util.concurrent.Future`来实现多线程，这种方式更加灵活和强大。
+
+
+
+## 反射
+
+### 什么是反射
+
+获取运行时类信息的一种手段
+
+反射的起点是字节码文件对象
+
+### 获取字节码文件对象的几种方式
+
+- 对象.getClass()
+- 类名.class
+- Class.forName(String className)  全限定名
+- ClassLoader里的loadClass(String className)
+
+**注意:**
+
+无论通过什么方式获取的字节码文件对象 都是同一个
+
+###  项目中那里用到了反射
+
+springMVC的实现就用到了反射
+
+## 注解
+
+**项目中redis的自定义注解，见上文**
+
+主要是两个
+
+@Target和 @Retention
+
+```java
+@Target({ElementType.METHOD})         // 注解可以作用的目标
+@Retention(RetentionPolicy.RUNTIME)   // 注解的保留级别
+public @interface RedisCache {
+
+    // 给缓存数据增加前缀，以区分不同的缓存数据
+    String prefix() default "cache:";
+
+}
+```
+
+
+
+
 
 
 
