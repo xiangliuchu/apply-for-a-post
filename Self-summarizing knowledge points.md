@@ -2381,7 +2381,7 @@ http{
 
 
 
-## io流
+## （待补充）io流
 
 
 
@@ -2463,7 +2463,7 @@ public @interface RedisCache {
 }
 ```
 
-## 关键字查询功能
+## （待补充）关键字查询功能
 
 
 
@@ -2491,7 +2491,81 @@ Token，令牌，Shiro中的Token是作为登录操作的参数，subject.login(
 
 
 
-## sms短信服务
+## sms短信服务（阿里云）
+
+**引入依赖，把一些值放入配置文件中。**
+
+
+
+既然我们使用的是SpringBoot那么我们其实是可以使用配置文件来管理这些值的
+
+比如我们创建一个`application-aliyun.yml`我们在其中提供对应的值，提供的值我们直接给容器中的组件使用，我们可以考虑使用Properties组件来接收这些值
+
+```java
+@Component
+@ConfigurationProperties("wd.aliyun")
+@Data
+public class WdAliyunProperties {
+  String accessKeyId;//wd.aliyun.access-key-id
+  String accessKeySecret;//wd.aliyun.access-key-secret
+  Oss oss;
+  Sms sms;
+
+  @Data
+  public static class Oss {
+    String bucket; //wd.aliyun.oss.bucket
+    String endPoint;
+    String urlPrefix;
+  }
+
+  @Data
+  public static class Sms {
+    String signName;
+    String templateCode;
+  }
+}
+```
+
+我们就可以在配置文件中提供值
+
+```yaml
+# application-aliyun.yml
+wd:
+  aliyun:
+    access-key-id: LTAI5t8gpxPTCR6W58RnZq4u
+    access-key-secret: mVPbpbxia0JQotb7HyJAREV8QUuq8h
+    oss:
+      bucket: wdproject2
+      end-point: oss-cn-beijing.aliyuncs.com
+      url-prefix: https://${wd.aliyun.oss.bucket}.${wd.aliyun.oss.end-point}
+    sms:
+      sign-name: 王道训练营
+      template-code: SMS_173765187
+```
+
+那么我们在容器中的其他组件中就可以引入对应的值
+
+```java
+@Service
+public class OssServiceImpl implements OssService{
+    @Autowired
+    WdAliyunProperties aliyunProperties;
+    @Override
+    public OssPutResult save(MultipartFile file)  {
+        String accessKeyId = aliyunProperties.getAccessKeyId();
+        String accessKeySecret = aliyunProperties.getAccessKeySecret();
+        String endpoint = aliyunProperties.getOss().getEndPoint();
+        String bucketName = aliyunProperties.getOss().getBucket();
+        String urlPrefix = aliyunProperties.getOss().getUrlPrefix();
+    }
+}
+```
+
+
+
+## （待补充）git 常用命令
+
+
 
 
 
