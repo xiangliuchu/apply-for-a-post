@@ -2374,6 +2374,40 @@ http{
 
 
 
+## 多线程
+
+### 实现方式一： 继承Thread类 重写run（）方法
+
+
+
+### 实现方式二： 实现Runnable接口
+
+
+
+### 方式比较
+
+在Java中，实现多线程有两种常见的方式：继承Thread类和实现Runnable接口。这两种方式有以下区别：
+
+1. 继承Thread类：
+   - 优点：继承Thread类可以直接重写Thread类的run()方法，使得代码结构相对简单，易于理解和维护。
+   - 缺点：由于Java不支持多继承，因此继承Thread类后，该类无法再继承其他类，限制了类的扩展性。此外，如果想要实现多线程，必须创建Thread类的实例，可能导致资源的浪费。
+
+2. 实现Runnable接口：
+   - 优点：实现Runnable接口可以避免继承的限制，因为Java支持实现多个接口。此外，实现Runnable接口还可以使得代码具有更好的可重用性，因为多个线程可以共享同一个Runnable实例。
+   - 缺点：相对于继承Thread类，实现Runnable接口需要单独创建一个Thread实例，并将Runnable实例作为参数传递给Thread构造函数。这增加了一些额外的代码和复杂性，使得代码稍微复杂一些。
+
+总体而言，选择继承Thread类还是实现Runnable接口取决于具体的需求和设计考虑。如果只是简单地创建一个线程并执行某些任务，继承Thread类是比较方便的。但如果需要更好的代码扩展性和可重用性，以及避免单继承的限制，实现Runnable接口是更好的选择。此外，还可以使用Java 8引入的函数式接口`java.util.concurrent.Callable`和`java.util.concurrent.Future`来实现多线程，这种方式更加灵活和强大。在Java中，实现多线程有两种常见的方式：继承Thread类和实现Runnable接口。这两种方式有以下区别：
+
+1. 继承Thread类：
+   - 优点：继承Thread类可以直接重写Thread类的run()方法，使得代码结构相对简单，易于理解和维护。
+   - 缺点：由于Java不支持多继承，因此继承Thread类后，该类无法再继承其他类，限制了类的扩展性。此外，如果想要实现多线程，必须创建Thread类的实例，可能导致资源的浪费。
+
+2. 实现Runnable接口：
+   - 优点：实现Runnable接口可以避免继承的限制，因为Java支持实现多个接口。此外，实现Runnable接口还可以使得代码具有更好的可重用性，因为多个线程可以共享同一个Runnable实例。
+   - 缺点：相对于继承Thread类，实现Runnable接口需要单独创建一个Thread实例，并将Runnable实例作为参数传递给Thread构造函数。这增加了一些额外的代码和复杂性，使得代码稍微复杂一些。
+
+总体而言，选择继承Thread类还是实现Runnable接口取决于具体的需求和设计考虑。如果只是简单地创建一个线程并执行某些任务，继承Thread类是比较方便的。但如果需要更好的代码扩展性和可重用性，以及避免单继承的限制，实现Runnable接口是更好的选择。此外，还可以使用Java 8引入的函数式接口`java.util.concurrent.Callable`和`java.util.concurrent.Future`来实现多线程，这种方式更加灵活和强大。
+
 
 
 
