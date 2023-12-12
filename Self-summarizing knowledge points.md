@@ -2469,6 +2469,26 @@ public @interface RedisCache {
 
 ## shiro安全框架
 
+### 总结
+
+还有需要注意的是对Shiro框架的使用 ,能够实现权限的管理,  对于还没有登陆的用户, 就不能使用购物车和收藏,下单等业务, 但是他要能够,进行商品首页以及商品详情的查看, 这是之前项目不曾涉及到的新的且很重要的知识点, 写相应的业务代码时, 要非常清楚知道用户, 角色, 权限之间的关系, 以及相关业务涉及到那些权限 ; 然后在一些接口中, 没有传入具体的数据, 但是, 这个业务明显是和具体的用户有关的, 这时候我们需要通过他的认证信息来获得自己想要的参数, 要注意Subject的重要性, 使用subject.getPrincipals() , 来获取认证后的用户信息; Realms也是很重要的, 能够获得对应的认证信息和授权信息
+
+### 核心术语
+
+<span style='color:yellow;background:red;font-size:文字大小;font-family:字体;'>**Subject**</span>，主体，在Shiro中所做的几乎所有操作都基于当前正在执行的用户<span style='color:red;background:white;font-size:13px;font-family:楷体;'>**也就是基本上Shiro的操作都是使用Subject操作的，Subject指的就是当前操作的用户**</span>。在代码中的任何位置都可以轻松获得Subject，通过Subject可以方便的操作Shiro。比如我们可以使用Subject提供的方法来执行认证、判断是否认证等操作
+
+![image-20230421104748250](D:\Java\java50th\java50-course-materials\03-JavaEE&Spring框架\02-笔记\image\Day26-shiro课程\image-20230421104748250.png)
+
+<font color='red'>**Principals**</font>，主体鉴定后的参数<span style='color:red;background:white;font-size:13px;font-family:楷体;'>**也就是认证后的用户信息**</span>，可以是姓名、用户id、用户对象等形式
+
+- 它是可以通过Subject来获得→ subject.getPrincipals();
+
+<font color='red'>**Credentials**</font>，用来验证身份的秘密数据，通常指密码，生物数据<span style='color:red;background:white;font-size:13px;font-family:楷体;'>**比如指纹、面部、瞳孔等**</span>
+
+<span style='color:yellow;background:red;font-size:文字大小;font-family:字体;'>**Realms**</span>，域或领域，安全的特殊数据存储对象（DAO），Shiro中的Realm主要是让你能够获得对应的认证信息和授权信息
+
+Token，令牌，Shiro中的Token是作为登录操作的参数，subject.login(token)
+
 
 
 ## sms短信服务
