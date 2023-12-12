@@ -2565,11 +2565,89 @@ public class OssServiceImpl implements OssService{
 
 ## （待补充）git 常用命令
 
+###  clone
 
+```shell
+ # 下载远程仓库的内容，并且在本地创建一个和远程仓库名同名的文件夹
+git clone https://gitee.com/common-zhou/test_50th.git
 
+# 下载到指定的文件夹中。文件夹需要是个空目录；或者这个文件夹不存在。都可以
+git clone https://gitee.com/common-zhou/test_50th.git test_50th2
 
+git clone https://gitee.com/ciggar/test-40th.git dirName
+```
 
+在git中管理文件的版本，需要使用文本文件。
 
+.txt .md ;  不要使用docx pptx
+
+### status
+
+git status: 查看工作区和缓冲区的变化
+
+### add
+
+这个命令可以帮助我们把工作区中的变化提交到缓冲区。
+
+```shell
+# 有以下的三种提交方式
+
+# 文件的名字
+git add fileName
+
+# 文件的类型，通配符添加
+# 只添加 .java文件结尾的文件 。从工作空间提交到缓冲区
+git add *.java
+
+# 所有文件
+git add .
+```
+
+### 分支操作
+
+分支操作
+
+```shell
+# 查看所有分支
+$ git branch
+
+# 创建分支并切换 iss53
+$ git checkout -b iss53
+
+# 切换分支
+$ git checkout iss53
+
+# 合并分支
+$ git merge iss53
+```
+
+<span style=color:red;background:yellow>**工作过程中的一般使用步骤**</span>
+
+```SHELL
+#  一般会有一个master 主分支
+#  会有一个dev分支
+
+# 1. 如果有需求，会从dev拉一个分支，比如 dev-feature1，所有的提交都提交在这个分支上
+# 1.1 从dev拉取一个分支，并切换到这个分支
+git checkout -b dev-feature1
+
+# 2. 等到开发完成，会把这个分支合并到dev。 dev经过测试，会合并到master
+# 2.1先切换到dev分支
+git checkout dev 
+
+# 2.2合并刚刚的分支
+git merge dev-feature1
+```
+
+### idea上的git操作
+
+<font color=red>**如果项目被git追踪了，则idea中会有对应的颜色提示。**</font>
+
+红色代表是新增的文件
+
+蓝色代表是文件有改动
+
+绿色代表已经提交。其他的操作与git基本操作一致。
 
 
 
