@@ -984,7 +984,9 @@ public class RedisCacheAspect {
     }
 ```
 
-## 布隆过滤器    解决缓存穿透问题
+## 布隆过滤器    解决缓存穿透问题 
+
+**项目中是在商品服务的config包里，去实现CommandLineRunner接口即可**
 
 **在商品上架的时候（onSale（）方法），向布隆过滤器中添加元素；然后在获取商品详情时判断，该元素是否在布隆过滤器中。**
 
@@ -1148,6 +1150,11 @@ public class FeignConsumerApplication {
 1. 网关路由分发到web-all时有用户的信息（网关通过cookie中的token去获取）；
 2. web-all远程调用order服务时没有用户的信息（因为这是另一个请求） ；
 3. 通过FeignInterceptor（会在远程调用发起请求前生效，也就是web-all在远程调用前生效），从web-all阶段获取用户的信息，然后把信息添加到请求头中；这样web-all调用order服务的请求头里有就有用户的信息了。
+
+### 项目中OpenFeign的具体使用
+
+1. 在商品服务中，用到了搜索服务的incrHotScore()方法
+2. 搜素服务中，调用了商品服务的getSkuInfo()方法、getCategoryView()方法、getTradeMark()等方法
 
 
 
