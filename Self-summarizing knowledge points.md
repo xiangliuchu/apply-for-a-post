@@ -809,7 +809,7 @@ public void before(JoinPoint joinPoint){
 
 整个流程的逻辑：在需要被增强的方法（**比如getSkuInfo()方法等**）上面添加自定义注解如@RedisCache， 然后再单独写一个切面，通知方法使用环绕通知 @Around("**@annotation**(com.cskaoyan.mall.common.cache.**RedisCache**)")，其中@annotation匹配自定义注解@RedisCache；那么在所有有@RedisCache注解的方法就会执行增强方法：
 
-**1. 先访问Redis，有数据直接放回，没有数据则加锁；**  **（around通知）**
+**1. 先访问Redis，有数据直接放回，没有数据则加锁；**  **（around通知）**    **通过 getAnnotation(RedisCache.class) 可以获取到当前方法上标注的 RedisCache 注解对象。（通过获取这个注解对象的前缀，最终可以去访问redis中的数据，如果有就返回，没有就加锁访问数据库）**
 
 **2. 然后执行自己本身的方法，从数据库中拿数据；**  **（自身方法）**
 
@@ -2475,7 +2475,21 @@ public void testPage(){
 
 ###  项目中那里用到了反射
 
-springMVC的实现就用到了反射
+1.springMVC的实现就用到了反射
+
+**2.在使用aop时：**
+
+是的，methodSignature.getMethod().getAnnotation(RedisCache.class) 这一句使用了反射机制。
+
+首先，methodSignature.getMethod() 返回了当前方法的 Method 对象。然后，通过 Method 对象的 getAnnotation() 方法，可以获取到方法上标注的注解对象。
+
+在这个例子中，假设 RedisCache 是一个自定义的注解，**通过 getAnnotation(RedisCache.class) 可以获取到当前方法上标注的 RedisCache 注解对象。（通过获取这个注解对象的前缀，最终可以去访问redis中的数据，如果有就返回，没有就加锁访问数据库）**
+
+通过反射，我们可以在运行时获取到方法的相关信息，包括注解信息。这样可以方便地根据注解来做一些特定的处理或逻辑判断。
+
+```java
+RedisCache redisCache = methodSignature.getMethod().getAnnotation(RedisCache.class);
+```
 
 ## 注解
 
