@@ -171,44 +171,6 @@ public class MyComponent {
 
 
 
-## mybatis-plus中的分页插件  注意看getSize(), getPages()是表示的什么
-
-MyBatis Plus自带分页插件，只要简单的配置即可实现分页功能
-
-添加配置类
-
-```java
-@Configuration
-//@MapperScan("com.cskaoyan.mybatisplus.mapper") //可以将主类中的注解移到此处
-public class MybatisPlusConfig {
-    @Bean
-    public MybatisPlusInterceptor mybatisPlusInterceptor() {
-        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
-        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
-        return interceptor;
-	}
-}
-```
-
-```java
-@Test
-public void testPage(){
-    //设置分页参数
-    // 注意页数从1开始
-    Page<User> page = new Page<>(1, 2);
-    userMapper.selectPage(page, null);
-    //获取分页中的每一条记录
-    List<User> list = page.getRecords();
-    list.forEach(System.out::println);
-    System.out.println("当前页：" + page.getCurrent());
-    System.out.println("每页显示的条数：" + page.getSize());
-    System.out.println("总记录数：" + page.getTotal());
-    System.out.println("总页数：" + page.getPages());
-    System.out.println("是否有上一页：" + page.hasPrevious());
-    System.out.println("是否有下一页：" + page.hasNext());
-}
-```
-
 ## thymleaf渲染引擎的使用
 
 为了优化客户端渲染，使用**后端渲染**(服务端渲染)
@@ -2373,15 +2335,86 @@ http{
 1. **请求先入消息队列**，而不是由业务处理系统直接处理，做了一次缓冲,极大地减少了业务处理系统的压力；
 2. 事实上，秒杀时，后入队列的用户无法秒杀到商品，这些**请求可以直接被抛弃**，返回活动已结束或商品已售完信息；
 
-## （待补充）MybatisPlus
+## MybatisPlus    [mybatisplus](D:\Java\java50th\java50-course-materials\04-微服务\01-课件\07_基础技术\基础技术.md)
 
+### 引入依赖 配置文件中添加配置
 
+### 在启动类上加MapperScan注解
 
-... 
+```java
+@SpringBootApplication
+@MapperScan("com.cskaoyan.mybatisplus.mapper")
+public class Application {
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+}
+```
 
+### 定义user表对应的映射实体类User
 
+```java
+@Data //lombok注解
+public class User {
+    private Long id;
+    private String name;
+    private Integer age;
+    private String email;
+}
+```
+
+### 定义Mapper
+
+**继承一个BaseMapper，泛型里面为要操作的实体类型**
+
+BaseMapper是MyBatis-Plus提供的模板mapper，其中包含了基本的CRUD方法，泛型为操作的实体类型
+
+```java
+public interface UserMapper extends BaseMapper<User> {
+}
+```
+
+### 分页操作
+
+MyBatis Plus自带分页插件，只要简单的配置即可实现分页功能
+
+添加配置类
+
+```java
+@Configuration
+//@MapperScan("com.cskaoyan.mybatisplus.mapper") //可以将主类中的注解移到此处
+public class MybatisPlusConfig {
+    @Bean
+    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        return interceptor;
+	}
+}
+```
+
+```java
+@Test
+public void testPage(){
+    //设置分页参数
+    // 注意页数从1开始
+    Page<User> page = new Page<>(1, 2);   //1表示要查询的页码，2表示每页显示的记录数
+    userMapper.selectPage(page, null);
+    //获取分页中的每一条记录
+    List<User> list = page.getRecords();
+    list.forEach(System.out::println);
+    System.out.println("当前页：" + page.getCurrent());
+    System.out.println("每页显示的条数：" + page.getSize());
+    System.out.println("总记录数：" + page.getTotal());
+    System.out.println("总页数：" + page.getPages());
+    System.out.println("是否有上一页：" + page.hasPrevious());
+    System.out.println("是否有下一页：" + page.hasNext());
+}
+```
 
 ## （待补充）io流
+
+
 
 
 
@@ -2563,7 +2596,7 @@ public class OssServiceImpl implements OssService{
 
 
 
-## （待补充）git 常用命令
+## git 常用命令
 
 ###  clone
 
