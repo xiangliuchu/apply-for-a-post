@@ -2144,6 +2144,8 @@ cloud:
 
 ## redis相关问题
 
+项目中redis是在common服务里，进行了基本配置，构造了RedissonClient对象，并且进行了@bean的注入
+
 ### redis使用场景
 
 - 缓存：穿透、击穿、雪崩 ； 双写一致性、持久化 ； 数据过期、淘汰策略
