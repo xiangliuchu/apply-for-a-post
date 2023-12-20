@@ -2346,7 +2346,53 @@ http{
 
 ## MybatisPlus    [mybatisplus](D:\Java\java50th\java50-course-materials\04-微服务\01-课件\07_基础技术\基础技术.md)
 
-### 引入依赖 配置文件中添加配置
+### 先引入依赖，再配置文件中添加配置
+
+创建一个SpringBoot工程(可以使用Spring Initializer)，引入如下依赖
+
+```maven
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>com.baomidou</groupId>
+        <artifactId>mybatis-plus-boot-starter</artifactId>
+        <version>3.5.3.1</version>
+    </dependency>
+     <dependency>
+         <groupId>mysql</groupId>
+         <artifactId>mysql-connector-java</artifactId>
+         <scope>runtime</scope>
+     </dependency>
+      <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+</dependencies>
+```
+
+在application.yml中添加如下配置
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/test?characterEncoding=utf8&serverTimezone=GMT%2B8&useSSL=false
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: 1234
+# 在日志中显示实际执行的sql语句
+logging:
+  level:
+    com.cskaoyan.mybatis.plus.mapper: debug
+```
 
 ### 在启动类上加MapperScan注解
 
@@ -2520,6 +2566,14 @@ public @interface RedisCache {
 ```
 
 ## （待补充）关键字查询功能
+
+
+
+
+
+
+
+
 
 
 
