@@ -1158,7 +1158,11 @@ public class FeignConsumerApplication {
 
 
 
-## Elastic Search       [Elastic Search2](D:\Java\java50th\java50-course-materials\04-微服务\01-课件\15_elasticsearch-2\Elastic Search2.md)  ←Java api 
+## Elastic Search       [Elastic Search2](D:\Java\java50th\java50-course-materials\04-微服务\01-课件\15_elasticsearch-2\Elastic Search2.md)  ←Java api   [掘金]([ES使用和搜索中心的建设（一:基础介绍与语法） - 掘金 (juejin.cn)](https://juejin.cn/post/6844904116783677454?searchId=202312211033555F381008EC9A77C100BE))
+
+![](D:\Desktop\calligraphy-pic\es.png)
+
+
 
 ### match all
 
@@ -2763,7 +2767,85 @@ git merge dev-feature1
 
 ## （待补充）数据库优化
 
+### 如何定位慢查询
 
+#### 方案一：开源工具
 
+- 调试工具：Arthas
+- 运维工具：Prometheus、Skywalking
 
+#### 方案二：Mysql自带慢日志
 
+慢查询日志记录了所有执行时间超过指定参数（long_query_time, 单位：秒，默认10秒）的所有SQL语句的日志
+
+如果要开慢查询日志，需要在Mysql的配置文件（/etc/my.cnf）中配置如下信息：
+
+```
+# 开启Mysql慢日志查询开关
+slow_query_log=1
+# 设置慢日志的时间为2秒，SQL语句执行时间超过2秒，就会视为慢查询，记录慢查询日志
+long_query_time=2
+```
+
+配置完毕之后，通过以下指令重新启动Mysql服务器进行测试，查看慢日志文件中记录的信息
+
+/var/lib/mysql/localhost-slow.log
+
+**注意**：在mysql中开启了慢日志查询，我们设置的值是**2秒**，一旦sql执行超过了2秒就会记录到日志中（调试阶段）（生产环境不会开启，因为会损失性能）
+
+---------------------------
+
+**补充：**
+
+是的，将`slow_query_log=1`添加到MySQL配置文件中会启用慢查询日志功能。当您将该选项设置为1时，MySQL会开始记录执行时间超过`long_query_time`设置的查询语句到慢查询日志中。
+
+请注意，启用慢查询日志可能会对MySQL服务器的性能产生一定影响，因为它需要额外的系统资源来记录和处理查询。确保在生产环境中仅在必要时启用慢查询日志，并根据需要进行适当的调整和优化。
+
+此外，除了设置`slow_query_log=1`，您还可以使用其他相关选项来定制慢查询日志的行为，例如：
+
+- `slow_query_log_file`：指定慢查询日志文件的路径和名称。
+- `long_query_time`：定义查询执行时间超过多少秒才被认为是慢查询。
+- `log_queries_not_using_indexes`：记录未使用索引的查询语句。
+- `log_slow_admin_statements`：记录管理员执行的慢查询语句。
+
+您可以通过编辑MySQL配置文件并重新启动MySQL服务器来应用这些更改。确保在进行任何更改之前备份您的配置文件，以防止意外的问题发生。
+
+----------------
+
+### 找到了慢的sql，如何分析
+
+可以采用**explain或者desc**命令获取mysql如何执行select语句的信息
+
+如：**explain** select * from student where id = 1;
+
+![image-20231225124934074](C:\Users\张仕谦\AppData\Roaming\Typora\typora-user-images\image-20231225124934074.png)
+
+- possible_keys 当前sql可能会使用到的索引
+
+- **key** 当前sql实际命中的索引   ：通过key和key_len这两个查看是否可能会命中索引
+
+- **key_len** 索引占用的大小
+
+- extra 额外的优化建议
+
+  - Using where, Using Index 查找使用了索引，需要的数据在索引列中能找到，不需要回表查询数据
+  - Using index condition 查找使用了索引，但是需要回表查询数据
+
+- **type** 这条sql的连接的类型，性能由好到坏为NULL，system，const，eq_ref, ref, range, index, all
+
+  - system : 查询系统中的表（平时比较少遇到）
+  - const : 根据主键查询
+  - eq_ref : 主键索引查询或唯一索引查询
+  - ref : 索引查询
+  - range ：范围查询
+  - index ：索引树扫描       性能很差了
+  - all ：全盘扫描
+
+  ```ini
+  q&a
+  q: 这个sql语句执行很慢，如何分析呢？
+  
+  a：如果一条sql执行的很慢的话，我们通常会使用mysql自动的执行计划explain来查看这条sql的执行情况，比如在这里面可以通过key和key_len检查是否命中了索引，如果本身已经添加了索引， 也可以判断索引是否有失效的情况， 第二个，可以通过type字段查看sql是否有进一步优化的空间，是否存在全索引扫描或全盘扫描的，第三个可以通过extra建议来判断，是否出现了回表，如果出现了，可以尝试添加索引或修改返回字段来修复。
+  ```
+
+  
