@@ -2264,6 +2264,31 @@ Ribbon是一个客户端负载均衡器，能够给HTTP客户端带来灵活的�
 
 ## nginx  （反向代理、负载均衡、动静分离）
 
+**补充**：配置文件目录
+
+Nginx的配置文件通常位于`/etc/nginx`目录下。具体的配置文件路径可能有所不同，取决于您的操作系统和Nginx的安装方式。
+
+以下是一些常见的Nginx配置文件路径：
+
+- 主配置文件：`/etc/nginx/nginx.conf`
+- 站点配置文件目录：`/etc/nginx/conf.d/` 或 `/etc/nginx/sites-available/`
+- 默认站点配置文件：`/etc/nginx/conf.d/default.conf` 或 `/etc/nginx/sites-available/default`
+
+您可以使用命令行浏览文件系统以找到Nginx的配置文件。运行以下命令可以列出`/etc/nginx`目录下的文件和文件夹：
+```
+ls /etc/nginx
+```
+
+请注意，您可能需要以超级用户（如root）身份运行此命令，或者使用`sudo`命令。
+
+一旦找到了Nginx的配置文件，您可以使用文本编辑器（如`vi`或`nano`）打开它以进行修改。请确保在修改配置文件之前备份原始文件，以防止意外的更改导致问题。
+
+如果您使用的是自定义的Nginx安装路径，则配置文件可能位于不同的位置。在这种情况下，您可以尝试运行`nginx -t`命令来检查Nginx配置文件的位置和语法错误。
+
+-----------------------------------------------
+
+
+
 正向代理代理客户端 ； **反向代理代理代理服务端**   
 
 并发性好 ，官方说可以有50000个请求， tomcat 也就4、500个请求。
@@ -2848,4 +2873,147 @@ long_query_time=2
   a：如果一条sql执行的很慢的话，我们通常会使用mysql自动的执行计划explain来查看这条sql的执行情况，比如在这里面可以通过key和key_len检查是否命中了索引，如果本身已经添加了索引， 也可以判断索引是否有失效的情况， 第二个，可以通过type字段查看sql是否有进一步优化的空间，是否存在全索引扫描或全盘扫描的，第三个可以通过extra建议来判断，是否出现了回表，如果出现了，可以尝试添加索引或修改返回字段来修复。
   ```
 
-  
+
+
+
+### 了解过索引吗（什么是索引）
+
+**索引是数据库中一种用于提高检索数据速度的数据结构。**
+
+- 索引是帮助mysql高效获取数据的数据结构（有序）
+- 提高数据检索的效率，降低数据库的IO成本（不需要做全表扫描）
+- 通过索引列对数据进行排序，降低数据排序的成本，降低cpu的消耗
+
+-------
+
+#### 补充：InnoDB引擎
+
+InnoDB 是 MySQL 数据库管理系统中的一种存储引擎（Storage Engine）。存储引擎是负责管理数据库表的底层存储和检索的组件。MySQL 支持多种存储引擎，而 InnoDB 是其中一种广泛使用的存储引擎之一。
+
+以下是 InnoDB 存储引擎的一些关键特性和特点：
+
+1. **事务支持：** InnoDB 是一个支持事务的存储引擎。它遵循 ACID（原子性、一致性、隔离性、持久性）属性，确保在事务处理中数据的完整性和一致性。
+
+2. **行级锁定：** InnoDB 使用行级锁定（row-level locking），这使得多个事务可以同时访问同一表的不同行，从而提高并发性能。
+
+3. **外键约束：** InnoDB 提供了对外键的支持，可以保持表与表之间的关系完整性。这对于实施复杂的数据模型和关联表非常有用。
+
+4. **MVCC（多版本并发控制）：** InnoDB 使用 MVCC 来管理事务的隔离性。这允许每个事务在并发环境中感知到一致性的数据视图，而不会受到其他事务的干扰。
+
+5. **自动崩溃恢复：** InnoDB 提供自动崩溃恢复机制，确保在数据库发生崩溃时能够尽可能地还原到一致的状态。
+
+6. **缓冲池和刷新：** InnoDB 使用缓冲池来缓存表数据和索引，以提高读取性能。它还通过“刷新”机制将脏数据（已修改但尚未写入磁盘的数据）写回磁盘。
+
+7. **插入缓冲：** InnoDB 使用插入缓冲（Insert Buffer）来优化主键索引的插入操作，提高插入性能。
+
+8. **独立表空间：** 每个 InnoDB 表都有一个独立的表空间，这使得对表的备份和恢复更为灵活。
+
+由于其强大的事务支持、高并发性和其他先进的功能，InnoDB 成为了许多 MySQL 数据库中默认的存储引擎。然而，MySQL 也支持其他存储引擎，每个存储引擎都有其适用的场景和优势。
+
+
+
+### 索引的底层数据结构了解过吗
+
+Mysql的InnoDB引擎采用的是B+树的数据结构来存储索引
+
+- 阶数更多，路径更短
+- 磁盘读写代价B+树更低，非叶子节点只存储指针，叶子节点存储数据
+- B+树便于扫库和区间查询，叶子节点是一个双向链表
+
+### 什么是聚簇索引，什么是非聚簇索引？
+
+#### 什么是聚集索引（聚簇索引），什么是二级索引（非聚集索引）
+
+**聚集索引**：将数据存储与索引放到了一块，索引结构的叶子节点保存了很数据。特点是必须有，而且只有一个。
+
+**二级索引**：将数据与索引分开存储，索引结构的叶子节点关联的是对应的主键。特点是可以存在多个。
+
+聚集索引选取规则：
+
+1. 如果存在主键，主键就是聚集索引
+2. 如果不存在主键，将使用第一个唯一（UNIQUE）索引作为聚集索引
+3. 如果表中没有主键，或没有合适的唯一索引，则InnoDB会自动生成一个row Id作为隐藏的聚集索引
+
+#### 什么是回表查询
+
+通过二级索引找到对应的主键值，再通过找到的主键值到聚簇索引中查找整行数据，这个过程就是回表
+
+### #（待补充）什么是覆盖索引
+
+
+
+
+
+
+
+
+
+
+
+## 结合商品种类来实现商品id的生成
+
+结合商品种类来实现商品ID的生成，一个常见的方法是将类别信息编码到ID中。这样的ID通常包括几个部分，例如：
+
+- **类别代码**：每个商品类别有一个唯一的代码。
+- **时间戳**：表示商品录入系统的时间，有助于排序和确保唯一性。
+- **序列号**：在同一时间戳内区分不同的商品。
+- **随机数或哈希**：确保ID的唯一性并增加难以预测的特性。
+
+下面是一个简单的Java示例，演示如何根据商品种类生成ID：
+
+```java 
+import java.time.Instant;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class ProductIdGenerator {
+    // 假设每个商品种类都有一个唯一的标识符，例如 "ELEC" 代表电子产品
+    // 可以根据实际情况扩展为枚举或者从数据库动态加载
+    private static final String ELECTRONICS_CODE = "ELEC";
+    private static final String CLOTHING_CODE = "CLOT";
+    // ... 其他商品种类代码
+
+    // 序列号生成器，这里用AtomicLong来确保线程安全
+    private AtomicLong sequenceGenerator = new AtomicLong();
+
+    public String generateUniqueId(String categoryCode) {
+        long timestampPart = Instant.now().toEpochMilli(); // 当前时间戳
+        long sequencePart = sequenceGenerator.getAndIncrement(); // 序列号
+        return categoryCode + timestampPart + sequencePart;
+    }
+
+    // 示例方法：生成电子产品类别的ID
+    public String generateElectronicsId() {
+        return generateUniqueId(ELECTRONICS_CODE);
+    }
+
+    // 示例方法：生成服装类别的ID
+    public String generateClothingId() {
+        return generateUniqueId(CLOTHING_CODE);
+    }
+
+    // ... 其他类别的ID生成方法
+}
+
+// 使用示例
+public class Main {
+    public static void main(String[] args) {
+        ProductIdGenerator generator = new ProductIdGenerator();
+        String electronicsId = generator.generateElectronicsId();
+        String clothingId = generator.generateClothingId();
+
+        System.out.println("Electronics ID: " + electronicsId);
+        System.out.println("Clothing ID: " + clothingId);
+    }
+}
+```
+
+上面的代码定义了一个`ProductIdGenerator`类，它可以为不同的商品类别生成唯一的ID。这里使用了简单的字符串拼接来组合类别代码、时间戳和序列号。序列号使用`AtomicLong`生成，以保证线程安全。
+
+注意，这个简单的实现假设了以下几点：
+
+- 类别代码是预先定义好的，且每个类别都有唯一的代码。
+- 系统的并发量不会在同一毫秒内超过`Long`类型的最大值，否则序列号会重复。
+- 如果系统是分布式的，还需要考虑跨不同服务器/实例的唯一性。
+
+这个方案是一个起点，实际应用中可能需要更复杂的逻辑，例如处理不同数据中心的ID生成，或者避免在多台机器上ID冲突等。需要根据实际的业务需求和系统架构来进一步优化和定制。
+
