@@ -169,11 +169,19 @@ public class MyComponent {
 
 在上面的例子中，my.property 是在配置文件中定义的属性，使用 @Value 注解将其注入到 myProperty 字段中。
 
+### @EnableDiscoveryClient
+
+以启用nacos的服务发现功能
+
+### @EnableFeignClients
+
+在启动类上加注解@EnableFeignClients，才能让我们定义的FeignClient生效
 
 
-## thymleaf渲染引擎的使用
 
-为了优化客户端渲染，使用**后端渲染**(服务端渲染)
+## thymeleaf渲染引擎的使用
+
+为了优化客户端渲染，使用**后端渲染(服务端渲染)**
 
 客服端渲染过程：
 
@@ -2227,17 +2235,29 @@ cloud:
 
 
 
+## nacos
+
+1. 项目中只需要引入依赖
+2. 在每个服务的yaml文件中配置nacos的地址（包括注册中心和配置中心）
+3. 然后在spring boot应用的启动类上添加`@EnableDiscoveryClient`注解即可
+
+
+
 
 
 ## Ribbon
 
 nacos 已经整合了ribbon，配置文件中设置相关策略
 
-待补充 ...  看收藏 微服务篇	
+
+
+关于负载均衡策略，如果你没有显式地配置 `NFLoadBalancerRuleClassName`，那么 Ribbon 将会使用默认的负载均衡规则。默认规则是 `ZoneAvoidanceRule`，它会根据服务实例所在的可用区域进行负载均衡。
+
+
 
 ### Ribbon负载均衡
 
-Ribbon是一个客户端负载均衡器，能够给HTTP客户端带来灵活的控制。其实现的核心功能，就是一组选择策略，帮助我们在一个服务集群中，选择一个服务实例，并向该实例发起调用请求。它所支持的负载均衡策略如下:
+Ribbon是一个客户端负载均衡器，能够给HTTP客户端带来灵活的控制。**其实现的核心功能，就是一组选择策略，帮助我们在一个服务集群中，选择一个服务实例，并向该实例发起调用请求。**它所支持的负载均衡策略如下:
 
 | 策略               | 实现类                        | 描述                                                         |
 | ------------------ | ----------------------------- | ------------------------------------------------------------ |
@@ -3042,7 +3062,68 @@ public class Main {
 
 ##  spring cloud gateway
 
-在项目中是有一个网关服务，config包中是CorsConfig跨域配置，filter包中，是一个登陆校验拦截
+在项目中是有一个网关服务，config包中是CorsConfig跨域配置，filter包中，是一个登陆校验拦截AuthFilter
+
+逻辑是：
+
+1. 获取当前的访问的Path 
+   - 判断当前路径是不是服务调用的内部接口，如果是内部接口直接拦截
+2. 判断用户是否已经登陆
+
+   - 用户登陆，IP合法
+   - 用户登陆，但是IP不合法
+   - 用户未登录
+3. 其他情况不需要登陆，放行
+4. 还会在其中获取token，token会放在header中或者cookie中
+
+配置文件
+
+```yaml
+spring:
+  application:
+    name: cloud-gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+    gateway:
+      routes:    # 项目中routes 配置在nacos中 server-gateway-dev.yaml
+         #路由的ID，没有固定规则但要求唯一，建议配合服务名
+        - id: config_route 
+          #匹配后提供服务的路由地址, 这里lb之后，跟的是要调用的服务名称
+          uri: lb://nacos-provider-8002
+           # 断言，路径相匹配的条件
+          predicates:
+            - Path=/routeconfig/rest/**      
+```
+
+此时，当id为config_route的路由规则匹配某个请求后，在调用该请求对应的服务时，就会从nacos注册中心自动发现服务，并在服务调用的时候实现负载均衡。
+
+代码中的yaml文件：
+
+```yml
+spring:
+  application:
+    name: server-gateway
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 120.46.174.115:8848
+      config:
+        server-addr: 120.46.174.115:8848
+        file-extension: yaml
+        shared-configs:
+          - data-id: common.yaml
+        timeout: 10000
+# 网关会使用 配置中心里面哪些配置文件？
+# common.yaml
+# server-gateway-dev.yaml
+```
+
+
+
 
 
 
@@ -3070,7 +3151,15 @@ public class Main {
 
 3. 然后在**http块**下面处理动态请求的**location块**中，添加 如proxy_pass  http://backend;
 
-4. 
+4. 请求然后再到spring cloud gateway进行请求的认证和转发， 其中spring.cloud.gateway.routes配置里的uri ：lb://service-product 表示要分发到这个服务上，并且lb（load balancer）表示要进行负载均衡
+
+5. 如果没有显示的配置NFloadBalancerRuleClassName指定具体的负载均衡策略的话，那么就会使用默认的ZoneAoidanceRule区域敏感策略，帮我们选择一个服务实例
+
+6. nacos是引入依赖，配置文件中，配置nacos的地址（服务中心和配置中心）spring.cloud.nacos.discovery.server-addr和spring.cloud.nacos.cofig.server-addr
+
+7. 动态路由到商品服务后，
+
+- （待补充thymeleaf再细看商品详情的pdf，return “index”是什么意思）先进行了一个后端渲染 
 
 
 
