@@ -2219,17 +2219,11 @@ cloud:
 
 
 
-
-
 ### 购物车扣库存问题
 
 购物车不扣，生成订单时也不扣，完成付款时才扣库存。
 
 
-
-
-
-## 整个流程复盘一下 （待完成 ...  先把问题都解决）
 
 
 
@@ -2295,7 +2289,7 @@ ls /etc/nginx
 
 
 
-**集群及负载均衡配置**
+**集群及负载均衡配置**    nginx负载均衡
 
 ```
 #负载均衡策略 
@@ -2307,13 +2301,40 @@ ls /etc/nginx
 # 6 url_hash (第三方) 
 ```
 
+如：最少连接
+
+```ini
+#最少连接
+upstream backend {
+    least_conn;
+    server backend-server1;
+    server backend-server2;
+    # 添加更多后端服务器...
+}
+```
+
+权重
+
+```ini
+#权重
+upstream backend {
+    server backend-server1 weight=3;
+    server backend-server2 weight=2;
+    # 添加更多后端服务器...
+}
+```
+
+
+
+--------------------------------------
+
 **反向代理的配置**    **(重要)**
 
 ```bash
 http{
 	...
 	...
-	#负载均衡策略   此处是权重
+	#负载均衡策略  mysvr在这里是一个自定义的名字，你可以随意命名。它代表了一个后端服务器组，用于负载均衡。 此处是权重  
 	upstream mysvr{
 		#服务器资源
 		server 192.168.45.151:8080 weight=2;
@@ -3016,4 +3037,50 @@ public class Main {
 - 如果系统是分布式的，还需要考虑跨不同服务器/实例的唯一性。
 
 这个方案是一个起点，实际应用中可能需要更复杂的逻辑，例如处理不同数据中心的ID生成，或者避免在多台机器上ID冲突等。需要根据实际的业务需求和系统架构来进一步优化和定制。
+
+
+
+##  spring cloud gateway
+
+在项目中是有一个网关服务，config包中是CorsConfig跨域配置，filter包中，是一个登陆校验拦截
+
+
+
+
+
+
+
+## （待完成 ...  先把问题都解决）整个流程复盘一下 
+
+
+
+1. 当请求进来之后， 先到nginx中，静态请求nginx直接处理，动态请求再交给后端的应用服务器，这里也可以减轻后端服务器的压力
+
+2. 然后在nginx的配置文件中**http块**下的**upstream块**中配置负载均衡组，自定义好负载均衡组的名字，还有负载均衡策略（默认为轮询）如：
+
+   ```nginx
+   upstream backend {
+       server backend-server1 weight=3;
+       server backend-server2 weight=2;
+       # 添加更多后端服务器...
+   }
+   ```
+
+   
+
+3. 然后在**http块**下面处理动态请求的**location块**中，添加 如proxy_pass  http://backend;
+
+4. 
+
+
+
+
+
+
+
+
+
+
+
+
 
