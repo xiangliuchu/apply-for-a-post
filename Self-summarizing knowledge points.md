@@ -179,7 +179,61 @@ public class MyComponent {
 
 
 
+### @Controller和@RestController的一些区别
+
+`@Controller` 和 `@RestController` 在 Spring 中有一些区别，特别是在处理视图（View）的方面。
+
+1. **@Controller：**
+   - 使用 `@Controller` 注解的类通常用于处理 Web 请求，并返回视图（View）。
+   - 当一个方法使用 `@Controller` 注解时，它的返回值通常会被解释为视图的名称，然后被视图解析器解析成实际的视图路径。
+   - 你可以使用 `return "item/item";` 这样的语句，它将会返回名为 "item/item" 的视图。
+
+   ```java
+   @Controller
+   public class ItemController {
+       @GetMapping("/showItem")
+       public String showItem() {
+           return "item/item";
+       }
+   }
+   ```
+
+2. **@RestController：**
+   - 使用 `@RestController` 注解的类主要用于创建 RESTful Web 服务，它的方法通常返回数据而不是视图。
+   - 当一个方法使用 `@RestController` 注解时，它的返回值将被直接转换成 JSON 或其他格式，而不是被解释为视图名称。
+   - 如果你在 `@RestController` 中使用 `return "item/item";`，Spring 将会尝试将该字符串直接转换为 JSON，这通常不是你想要的行为。
+
+   ```java
+   @RestController
+   public class ItemRestController {
+       @GetMapping("/showItem")
+       public String showItem() {
+           return "item/item";  // 这将被转换为 JSON 或其他格式，不是视图
+       }
+   }
+   ```
+
+如果你在 `@RestController` 中希望返回一个视图，你可以使用 `ModelAndView` 类来封装视图名称和模型数据：
+
+```java
+@RestController
+public class ItemRestController {
+    @GetMapping("/showItem")
+    public ModelAndView showItem() {
+        ModelAndView modelAndView = new ModelAndView("item/item");
+        // 添加模型数据，如果需要的话
+        return modelAndView;
+    }
+}
+```
+
+总的来说，`@Controller` 适用于处理 Web 请求并返回视图，而 `@RestController` 适用于创建 RESTful Web 服务并返回数据。
+
+
+
 ## thymeleaf渲染引擎的使用
+
+### 服务端渲染和客服端渲染
 
 为了优化客户端渲染，使用**后端渲染(服务端渲染)**
 
@@ -212,6 +266,32 @@ public class MyComponent {
 - 与客户端渲染页面不同，后端渲染指的是，在返回页面的时候就将动态数据直接写入到返回给客户端的HTML文件中
 - 这样一来，**客户端就不用在获取HTML页面后，再次通过异步请求来获取这些动态数据，而是直接使用包含所需数据的HTML，对于前端，少了请求数据的延迟，对于后端减少了处理请求的数量**
 - 对于另外的一些需要根据用户的行为，来实时获取的动态数据，前端仍然可以使用ajax向后端发起动态请求实时获取
+
+
+
+###  thymeleaf项目中的使用
+
+项目中是在**web服务**（这个服务就是渲染页面的）中，通过openFegin从其他服务中获得数据， 然后再将这些数据动态渲染到html页面中
+
+web服务 在nacos中的配置文件：
+
+```yaml
+spring:
+  thymeleaf:
+    mode: HTML5
+    #编码 可不用配置
+    encoding: UTF-8
+    #开发环境配置为false,避免修改模板还要重启服务器， ★但在生产环境中，建议启用缓存以提高性能。
+    cache: false
+    #配置模板路径，默认是templates，可以不用配置
+    prefix: classpath:/templates/
+```
+
+
+
+
+
+
 
 ## 分布式锁 （缓存击穿）       [商品详情优化](D:\Java\java50th\java50-course-materials\04-微服务\01-课件\13_商品详情页2\商品详情优化.md)
 
@@ -3127,10 +3207,6 @@ spring:
 
 
 
-
-
-
-
 ## （待完成 ...  先把问题都解决）整个流程复盘一下 
 
 
@@ -3157,13 +3233,11 @@ spring:
 
 6. nacos是引入依赖，配置文件中，配置nacos的地址（服务中心和配置中心）spring.cloud.nacos.discovery.server-addr和spring.cloud.nacos.cofig.server-addr
 
-7. 动态路由到商品服务后，
+7. 动态路由都会先web服务中，web服务通过远程调用，来获取其他服务中的数据，随后使用Thymeleaf模板引擎渲染HTML页面，并将这些动态生成的页面作为HTTP响应返回，
 
-- （待补充thymeleaf再细看商品详情的pdf，return “index”是什么意思）先进行了一个后端渲染 
+   - （待补充thymeleaf再细看商品详情的pdf，return “index”是什么意思）先进行了一个后端渲染 
 
-
-
-
+8. （待完成，看商品具体的功能了）
 
 
 
