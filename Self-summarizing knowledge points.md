@@ -1098,13 +1098,13 @@ public class RedisCacheAspect {
        boolen exists = rbloomFilter.contains(目标元素);
 ```
 
-在我们的商品服务中，**我们需要在服务启动的时候就执行对于布隆过滤器的初始化(即仅仅需要执行一个操作)**，所以我们可以将布隆过滤器的初始化，可以使用**CommandLineRunner**接口
+★★★ 在我们的商品服务中，**我们需要在服务启动的时候就执行对于布隆过滤器的初始化(即仅仅需要执行一个操作)**，所以我们可以将布隆过滤器的初始化，可以使用**CommandLineRunner**接口
 
 ```java
 public interface CommandLineRunner {
 
 	/**
-	   该方法会被SpringBoot在初始化完Spring容器之后自动调用
+	   ★★★该方法会被SpringBoot在初始化完Spring容器之后自动调用
 	 * Callback used to run the bean.
 	 * @param args incoming main method arguments
 	 * @throws Exception on error
@@ -1766,6 +1766,18 @@ GET product/_search
 
 
 
+**补充★**：上架的时候会远程调用商品服务，拿到信息，最后封装成Goods类，因为定义的接口为以下：（映射的实体类是Goods）
+
+```java
+public interface GoodsRepository extends ElasticsearchRepository<Goods,Long> {
+
+}
+```
+
+
+
+
+
 ### 基础配置 
 
 要使用Elasticsearch我们需要引入如下依赖： 
@@ -2309,7 +2321,7 @@ cloud:
 
 ### 购物车扣库存问题
 
-购物车不扣，生成订单时也不扣，完成付款时才扣库存。
+加入购物车不扣，生成订单时也不扣，完成付款时才扣库存。
 
 
 
@@ -3237,7 +3249,28 @@ spring:
 
    - （待补充thymeleaf再细看商品详情的pdf，return “index”是什么意思）先进行了一个后端渲染 
 
-8. （待完成，看商品具体的功能了）
+8. （待完成，看商品具体的功能了） 商品服务有
+
+   - 查看sku商品基本信息（包括sku商品的图片列表），
+   - 查询sku商品所属spu中，包含的所有销售属性及销售属性值
+   - 查询sku商品最新价格 （从数据库里查，因为查询的是最新的价格）
+   - sku商品所属的三级分类信息等... 
+   - 在SkuServiceImpl中的**上架**方法里要向**布隆过滤器**（**Redisson本身实现了基于Redis的布隆过滤器，可以非常方便的使用**）中添加skuId；同时在上架方法里要去发送**mq消息**，通知es要添加该商品的信息；在**下架**方法中，也要向es中发消息
+   - 还要通过远程调用搜索服务，进行热度排名
+
+9. rocketMq 见上文
+
+10. （待补充）oss 方式使用MinIO
+
+11. 搜索服务 通过远程调用商品服务，拿到
+
+    - 根据skuId获取sku信息
+    - 通过三级分类查询分类信息等
+    - 还有两个消息消费者（商品上架和商品下架），通过监听，监听到消息后，调用如：searchService.lowerGoods，来进行es的上下架
+    - 最终的查询是，结合关键字查询，过滤查询，分页查询，排序查询，聚合查询，高亮查询，指定结果字段，组合起来的DSL
+    - 增加热度功能
+
+    
 
 
 
